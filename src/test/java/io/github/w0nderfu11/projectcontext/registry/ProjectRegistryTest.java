@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,6 +57,28 @@ class ProjectRegistryTest {
         assertEquals(
                 secondProject.toRealPath(),
                 registry.getRoot("second")
+        );
+    }
+
+    @Test
+    void shouldReturnRegisteredProjectNamesInSortedOrder() throws IOException {
+        Path firstProject = Files.createDirectory(
+                tempDir.resolve("first-project")
+        );
+        Path secondProject = Files.createDirectory(
+                tempDir.resolve("second-project")
+        );
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of(
+                        "second", secondProject,
+                        "first", firstProject
+                )
+        );
+
+        assertEquals(
+                List.of("first", "second"),
+                registry.getProjectNames()
         );
     }
 

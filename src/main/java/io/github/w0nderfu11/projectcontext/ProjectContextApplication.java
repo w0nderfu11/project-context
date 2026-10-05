@@ -1,12 +1,14 @@
 package io.github.w0nderfu11.projectcontext;
 
 import io.github.w0nderfu11.projectcontext.application.GetCurrentTreeService;
+import io.github.w0nderfu11.projectcontext.application.ListProjectsService;
 import io.github.w0nderfu11.projectcontext.application.PingService;
 import io.github.w0nderfu11.projectcontext.application.ReadFileService;
 import io.github.w0nderfu11.projectcontext.application.SearchService;
 import io.github.w0nderfu11.projectcontext.mcp.McpHttpTransport;
 import io.github.w0nderfu11.projectcontext.mcp.ProjectContextMcpServer;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.SearchTool;
@@ -29,6 +31,8 @@ public final class ProjectContextApplication {
         );
 
         PingService pingService = new PingService();
+        ListProjectsService listProjectsService =
+                new ListProjectsService(projectRegistry);
         ReadFileService readFileService =
                 new ReadFileService(projectRegistry);
         GetCurrentTreeService getCurrentTreeService =
@@ -37,6 +41,8 @@ public final class ProjectContextApplication {
                 new SearchService(projectRegistry);
 
         PingTool pingTool = new PingTool(pingService);
+        ListProjectsTool listProjectsTool =
+                new ListProjectsTool(listProjectsService);
         ReadFileTool readFileTool =
                 new ReadFileTool(readFileService);
         GetCurrentTreeTool getCurrentTreeTool =
@@ -50,6 +56,7 @@ public final class ProjectContextApplication {
                      new ProjectContextMcpServer(
                              transport,
                              pingTool,
+                             listProjectsTool,
                              readFileTool,
                              getCurrentTreeTool,
                              searchTool
