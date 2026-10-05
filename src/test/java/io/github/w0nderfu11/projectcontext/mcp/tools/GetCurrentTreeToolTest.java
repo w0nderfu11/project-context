@@ -102,6 +102,7 @@ class GetCurrentTreeToolTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void shouldReturnDirectoryEntries() throws IOException {
         Path directory = Files.createDirectory(
                 tempDir.resolve("src")
@@ -125,10 +126,11 @@ class GetCurrentTreeToolTest {
                 )
         );
 
-        @SuppressWarnings("unchecked")
+        Map<String, Object> structuredContent =
+                (Map<String, Object>) result.structuredContent();
+
         Map<String, String> entries =
-                (Map<String, String>) result.structuredContent()
-                        .get("entries");
+                (Map<String, String>) structuredContent.get("entries");
 
         assertEquals(2, entries.size());
         assertEquals(
