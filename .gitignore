@@ -15,6 +15,7 @@ target/
 project-context.iml
 secrets/
 tunnel-client
+hints.txt
 
 ### Eclipse ###
 .apt_generated

@@ -22,7 +22,9 @@ public final class ProjectContextApplication {
         ProjectRegistry projectRegistry = new ProjectRegistry(
                 Map.of(
                         "project-context",
-                        Path.of("D:\\project-context")
+                        Path.of("D:\\project-context"),
+                        "bet2b-android-automation",
+                        Path.of("C:\\Users\\Vitaliy\\AndroidStudioProjects\\ANDROID_AUTOMATION_BET2B")
                 )
         );
 
