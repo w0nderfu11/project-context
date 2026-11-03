@@ -1,8 +1,10 @@
+
 package io.github.w0nderfu11.projectcontext.mcp;
 
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.SearchTool;
 import io.modelcontextprotocol.server.McpServer;
@@ -25,6 +27,7 @@ public final class ProjectContextMcpServer implements AutoCloseable {
             PingTool pingTool,
             ListProjectsTool listProjectsTool,
             ReadFileTool readFileTool,
+            ReadFileRangeTool readFileRangeTool,
             GetCurrentTreeTool getCurrentTreeTool,
             SearchTool searchTool
     ) {
@@ -37,6 +40,10 @@ public final class ProjectContextMcpServer implements AutoCloseable {
         Objects.requireNonNull(
                 readFileTool,
                 "readFileTool must not be null"
+        );
+        Objects.requireNonNull(
+                readFileRangeTool,
+                "readFileRangeTool must not be null"
         );
         Objects.requireNonNull(
                 getCurrentTreeTool,
@@ -53,6 +60,7 @@ public final class ProjectContextMcpServer implements AutoCloseable {
                         pingTool.specification(),
                         listProjectsTool.specification(),
                         readFileTool.specification(),
+                        readFileRangeTool.specification(),
                         getCurrentTreeTool.specification(),
                         searchTool.specification()
                 )
