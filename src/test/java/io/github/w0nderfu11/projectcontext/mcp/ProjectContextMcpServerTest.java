@@ -1,3 +1,4 @@
+
 package io.github.w0nderfu11.projectcontext.mcp;
 
 import io.github.w0nderfu11.projectcontext.application.GetCurrentTreeService;
@@ -8,6 +9,7 @@ import io.github.w0nderfu11.projectcontext.application.SearchService;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.SearchTool;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
@@ -28,6 +30,7 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +48,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -54,6 +58,7 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         listProjectsTool,
                         readFileTool,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         searchTool
                 ).close()
@@ -66,6 +71,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -76,6 +82,7 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         listProjectsTool,
                         readFileTool,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         searchTool
                 )
@@ -93,6 +100,7 @@ class ProjectContextMcpServerTest {
         McpHttpTransport transport = new McpHttpTransport();
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -103,6 +111,7 @@ class ProjectContextMcpServerTest {
                         null,
                         listProjectsTool,
                         readFileTool,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         searchTool
                 )
@@ -120,6 +129,7 @@ class ProjectContextMcpServerTest {
         McpHttpTransport transport = new McpHttpTransport();
         PingTool pingTool = new PingTool(new PingService());
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -130,6 +140,7 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         null,
                         readFileTool,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         searchTool
                 )
@@ -147,6 +158,7 @@ class ProjectContextMcpServerTest {
         McpHttpTransport transport = new McpHttpTransport();
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -157,6 +169,7 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         listProjectsTool,
                         null,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         searchTool
                 )
@@ -170,11 +183,12 @@ class ProjectContextMcpServerTest {
 
     @Test
     @SuppressWarnings("resource")
-    void shouldRejectNullGetCurrentTreeTool() throws IOException {
+    void shouldRejectNullReadFileRangeTool() throws IOException {
         McpHttpTransport transport = new McpHttpTransport();
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
         NullPointerException exception = assertThrows(
@@ -184,6 +198,36 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         listProjectsTool,
                         readFileTool,
+                        null,
+                        getCurrentTreeTool,
+                        searchTool
+                )
+        );
+
+        assertEquals(
+                "readFileRangeTool must not be null",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    @SuppressWarnings("resource")
+    void shouldRejectNullGetCurrentTreeTool() throws IOException {
+        McpHttpTransport transport = new McpHttpTransport();
+        PingTool pingTool = new PingTool(new PingService());
+        ListProjectsTool listProjectsTool = listProjectsTool();
+        ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
+        SearchTool searchTool = searchTool();
+
+        NullPointerException exception = assertThrows(
+                NullPointerException.class,
+                () -> new ProjectContextMcpServer(
+                        transport,
+                        pingTool,
+                        listProjectsTool,
+                        readFileTool,
+                        readFileRangeTool,
                         null,
                         searchTool
                 )
@@ -202,6 +246,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
 
         NullPointerException exception = assertThrows(
@@ -211,6 +256,7 @@ class ProjectContextMcpServerTest {
                         pingTool,
                         listProjectsTool,
                         readFileTool,
+                        readFileRangeTool,
                         getCurrentTreeTool,
                         null
                 )
@@ -228,6 +274,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -237,6 +284,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -280,6 +328,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -289,6 +338,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -348,6 +398,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -357,6 +408,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -426,6 +478,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -435,6 +488,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -501,6 +555,100 @@ class ProjectContextMcpServerTest {
     }
 
     @Test
+    void shouldCallReadFileRangeToolOverHttp() throws Exception {
+        Path file = Files.writeString(
+                tempDir.resolve("Example.java"),
+                "first\nsecond\nthird\nfourth"
+        );
+
+        McpHttpTransport transport = new McpHttpTransport();
+        PingTool pingTool = new PingTool(new PingService());
+        ListProjectsTool listProjectsTool = listProjectsTool();
+        ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
+        GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
+        SearchTool searchTool = searchTool();
+
+        try (ProjectContextMcpServer ignored =
+                     new ProjectContextMcpServer(
+                             transport,
+                             pingTool,
+                             listProjectsTool,
+                             readFileTool,
+                             readFileRangeTool,
+                             getCurrentTreeTool,
+                             searchTool
+                     )) {
+
+            JettyServer httpServer = new JettyServer(
+                    "127.0.0.1",
+                    0,
+                    transport.handler()
+            );
+
+            try {
+                httpServer.start();
+
+                URI endpoint = endpoint(httpServer);
+
+                try (HttpClient client = HttpClient.newHttpClient()) {
+                    String sessionId = initializeSession(
+                            client,
+                            endpoint
+                    );
+
+                    String requestBody = """
+                            {
+                              "jsonrpc": "2.0",
+                              "id": 7,
+                              "method": "tools/call",
+                              "params": {
+                                "name": "read_file_range",
+                                "arguments": {
+                                  "projectName": "project",
+                                  "filePath": "%s",
+                                  "startLine": 2,
+                                  "endLine": 3
+                                }
+                              }
+                            }
+                            """.formatted(
+                            jsonPath(file.toRealPath())
+                    );
+
+                    HttpResponse<String> response = client.send(
+                            toolRequest(
+                                    endpoint,
+                                    sessionId,
+                                    requestBody
+                            ),
+                            HttpResponse.BodyHandlers.ofString()
+                    );
+
+                    assertEquals(200, response.statusCode());
+                    assertTrue(
+                            response.body().contains(
+                                    "second\\nthird"
+                            )
+                    );
+                    assertFalse(
+                            response.body().contains(
+                                    "fourth"
+                            )
+                    );
+                    assertTrue(
+                            response.body().contains(
+                                    "\"isError\":false"
+                            )
+                    );
+                }
+            } finally {
+                httpServer.stop();
+            }
+        }
+    }
+
+    @Test
     void shouldCallGetCurrentTreeToolOverHttp() throws Exception {
         Path directory = Files.createDirectory(
                 tempDir.resolve("src")
@@ -518,6 +666,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -527,6 +676,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -612,6 +762,7 @@ class ProjectContextMcpServerTest {
         PingTool pingTool = new PingTool(new PingService());
         ListProjectsTool listProjectsTool = listProjectsTool();
         ReadFileTool readFileTool = readFileTool();
+        ReadFileRangeTool readFileRangeTool = readFileRangeTool();
         GetCurrentTreeTool getCurrentTreeTool = getCurrentTreeTool();
         SearchTool searchTool = searchTool();
 
@@ -621,6 +772,7 @@ class ProjectContextMcpServerTest {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
@@ -706,6 +858,20 @@ class ProjectContextMcpServerTest {
                 new ReadFileService(registry);
 
         return new ReadFileTool(readFileService);
+    }
+
+    private ReadFileRangeTool readFileRangeTool() throws IOException {
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of(
+                        "project",
+                        tempDir
+                )
+        );
+
+        ReadFileService readFileService =
+                new ReadFileService(registry);
+
+        return new ReadFileRangeTool(readFileService);
     }
 
     private GetCurrentTreeTool getCurrentTreeTool() throws IOException {

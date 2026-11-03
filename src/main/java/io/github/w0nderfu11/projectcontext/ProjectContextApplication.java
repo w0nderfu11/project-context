@@ -1,3 +1,4 @@
+
 package io.github.w0nderfu11.projectcontext;
 
 import io.github.w0nderfu11.projectcontext.application.GetCurrentTreeService;
@@ -10,6 +11,7 @@ import io.github.w0nderfu11.projectcontext.mcp.ProjectContextMcpServer;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.SearchTool;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
@@ -45,6 +47,8 @@ public final class ProjectContextApplication {
                 new ListProjectsTool(listProjectsService);
         ReadFileTool readFileTool =
                 new ReadFileTool(readFileService);
+        ReadFileRangeTool readFileRangeTool =
+                new ReadFileRangeTool(readFileService);
         GetCurrentTreeTool getCurrentTreeTool =
                 new GetCurrentTreeTool(getCurrentTreeService);
         SearchTool searchTool =
@@ -58,6 +62,7 @@ public final class ProjectContextApplication {
                              pingTool,
                              listProjectsTool,
                              readFileTool,
+                             readFileRangeTool,
                              getCurrentTreeTool,
                              searchTool
                      )) {
