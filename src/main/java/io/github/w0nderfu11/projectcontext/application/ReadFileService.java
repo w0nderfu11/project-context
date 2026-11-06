@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,6 +18,7 @@ public final class ReadFileService {
 
     private static final int MAX_RANGE_LINES = 300;
     private static final int MAX_RANGE_BYTES = 256 * 1024;
+    private static final int MAX_FILE_BYTES = 256 * 1024;
 
     private static final Logger log =
             LoggerFactory.getLogger(ReadFileService.class);
@@ -28,6 +32,7 @@ public final class ReadFileService {
         );
     }
 
+
     public String read(String projectName, Path filePath) throws IOException {
         log.debug(
                 "Starting file read: projectName={}, filePath={}",
@@ -37,7 +42,25 @@ public final class ReadFileService {
 
         Path realPath = resolveReadableFile(projectName, filePath);
 
-        String content = Files.readString(realPath);
+        String content;
+
+        try (InputStream input = Files.newInputStream(realPath)) {
+            byte[] bytes = input.readNBytes(MAX_FILE_BYTES + 1);
+
+            if (bytes.length > MAX_FILE_BYTES) {
+                throw new IllegalArgumentException(
+                        "file exceeds maximum allowed size: "
+                                + MAX_FILE_BYTES + " bytes"
+                );
+            }
+
+            content = StandardCharsets.UTF_8
+                    .newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        }
 
         log.debug(
                 "File read completed: projectName={}, filePath={}",
@@ -47,6 +70,7 @@ public final class ReadFileService {
 
         return content;
     }
+
 
     public String readRange(
             String projectName,
@@ -148,6 +172,15 @@ public final class ReadFileService {
         );
 
         return content.toString();
+    }
+
+    void validateProject(String projectName) {
+        Objects.requireNonNull(
+                projectName,
+                "projectName must not be null"
+        );
+
+        projectRegistry.getRoot(projectName);
     }
 
     private Path resolveReadableFile(String projectName, Path filePath)
