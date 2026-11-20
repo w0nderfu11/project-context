@@ -1,6 +1,8 @@
 
 package io.github.w0nderfu11.projectcontext.application;
 
+import io.github.w0nderfu11.projectcontext.application.dto.BatchReadResult;
+import io.github.w0nderfu11.projectcontext.application.dto.FileRangeRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

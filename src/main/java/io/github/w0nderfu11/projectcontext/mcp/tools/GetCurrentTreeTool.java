@@ -1,7 +1,7 @@
 package io.github.w0nderfu11.projectcontext.mcp.tools;
 
 import io.github.w0nderfu11.projectcontext.application.GetCurrentTreeService;
-import io.github.w0nderfu11.projectcontext.application.TreeEntryType;
+import io.github.w0nderfu11.projectcontext.application.enums.TreeEntryType;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 

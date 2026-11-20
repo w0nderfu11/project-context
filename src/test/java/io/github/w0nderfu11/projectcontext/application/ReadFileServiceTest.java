@@ -1,73 +1,140 @@
 
 package io.github.w0nderfu11.projectcontext.application;
 
+import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathViolationException;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class ReadFileServiceTest {
+
+    private static final int MAX_BYTES = 256 * 1024;
 
     @TempDir
     Path tempDir;
 
     @Test
     void shouldReadFileAndPreserveContent() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
-                """
+        String content = """
                 public class Example {
 
                     public void execute() {
                         System.out.println("hello");
                     }
                 }
-                """
-        );
+                """;
 
+        Path file = write(project, "Example.java", content);
         ReadFileService service = service(project);
 
-        String content = service.read("project", file);
-
-        assertEquals(
-                Files.readString(file),
-                content
-        );
+        assertEquals(content, service.read("project", file));
     }
 
     @Test
-    void shouldReadFileFromNestedDirectory() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldReadNestedFileAndRange() throws IOException {
+        Path project = project();
 
-        Path sourceDirectory = Files.createDirectories(
+        Path directory = Files.createDirectories(
                 project.resolve("src/main/java")
         );
 
         Path file = Files.writeString(
-                sourceDirectory.resolve("Example.java"),
-                "public class Example {}"
+                directory.resolve("Example.java"),
+                "first\nsecond\nthird"
         );
 
         ReadFileService service = service(project);
 
         assertEquals(
-                "public class Example {}",
+                "first\nsecond\nthird",
                 service.read("project", file)
+        );
+
+        assertEquals(
+                "second\nthird",
+                service.readRange("project", file, 2, 3)
+        );
+    }
+
+    @Test
+    void shouldReadEmptyFile() throws IOException {
+        Path project = project();
+
+        Path file = Files.createFile(
+                project.resolve("empty.txt")
+        );
+
+        ReadFileService service = service(project);
+
+        assertEquals("", service.read("project", file));
+        assertEquals("", service.readRange("project", file, 1, 10));
+    }
+
+    @Test
+    void shouldAllowMaximumFileSize() throws IOException {
+        Path project = project();
+        String content = "a".repeat(MAX_BYTES);
+
+        Path file = write(project, "large.txt", content);
+
+        assertEquals(
+                content,
+                service(project).read("project", file)
+        );
+    }
+
+    @Test
+    void shouldRejectFileExceedingMaximumSize() throws IOException {
+        Path project = project();
+
+        Path file = write(
+                project,
+                "large.txt",
+                "a".repeat(MAX_BYTES + 1)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service(project).read("project", file)
+        );
+
+        assertEquals(
+                "file exceeds maximum allowed size: 262144 bytes",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectMalformedUtf8() throws IOException {
+        Path project = project();
+
+        Path file = Files.write(
+                project.resolve("invalid.txt"),
+                new byte[]{(byte) 0xC3, (byte) 0x28}
+        );
+
+        ReadFileService service = service(project);
+
+        assertThrows(
+                MalformedInputException.class,
+                () -> service.read("project", file)
+        );
+
+        assertThrows(
+                MalformedInputException.class,
+                () -> service.readRange("project", file, 1, 1)
         );
     }
 
@@ -86,113 +153,181 @@ class ReadFileServiceTest {
 
     @Test
     void shouldRejectNullProjectName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
 
         ReadFileService service = service(project);
 
-        NullPointerException exception = assertThrows(
+        NullPointerException readError = assertThrows(
                 NullPointerException.class,
                 () -> service.read(null, file)
         );
 
+        NullPointerException rangeError = assertThrows(
+                NullPointerException.class,
+                () -> service.readRange(null, file, 1, 1)
+        );
+
         assertEquals(
                 "projectName must not be null",
-                exception.getMessage()
+                readError.getMessage()
+        );
+
+        assertEquals(
+                "projectName must not be null",
+                rangeError.getMessage()
         );
     }
 
     @Test
     void shouldRejectNullFilePath() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        ReadFileService service = service(project());
 
-        ReadFileService service = service(project);
-
-        NullPointerException exception = assertThrows(
+        NullPointerException readError = assertThrows(
                 NullPointerException.class,
                 () -> service.read("project", null)
         );
 
+        NullPointerException rangeError = assertThrows(
+                NullPointerException.class,
+                () -> service.readRange("project", null, 1, 1)
+        );
+
         assertEquals(
                 "filePath must not be null",
-                exception.getMessage()
+                readError.getMessage()
+        );
+
+        assertEquals(
+                "filePath must not be null",
+                rangeError.getMessage()
         );
     }
 
     @Test
     void shouldRejectUnregisteredProject() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
+
+        ReadFileService service = service(project);
+
+        IllegalArgumentException readError = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.read("unknown", file)
         );
 
-        Path file = Files.createFile(
-                project.resolve("Example.java")
+        IllegalArgumentException rangeError = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.readRange("unknown", file, 1, 1)
         );
+
+        assertEquals(
+                "project is not registered: unknown",
+                readError.getMessage()
+        );
+
+        assertEquals(
+                "project is not registered: unknown",
+                rangeError.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectRelativePath() throws IOException {
+        ReadFileService service = service(project());
+        Path relative = Path.of("Example.java");
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.read("project", relative)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.readRange("project", relative, 1, 1)
+        );
+    }
+
+    @Test
+    void shouldRejectTraversalSegments() throws IOException {
+        Path project = project();
+        write(project, "Example.java", "hello");
+
+        Path requested = project.resolve("src/../Example.java");
 
         ReadFileService service = service(project);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.read("unknown", file)
+                () -> service.read("project", requested)
         );
 
         assertEquals(
-                "project is not registered: unknown",
+                "requestedPath must not contain '..' segments",
                 exception.getMessage()
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.readRange("project", requested, 1, 1)
         );
     }
 
     @Test
     void shouldRejectFileOutsideProjectRoot() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path outsideFile = Files.createFile(
-                tempDir.resolve("outside.txt")
+        Path outside = Files.writeString(
+                tempDir.toRealPath().resolve("outside.txt"),
+                "secret"
         );
 
         ReadFileService service = service(project);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.read("project", outsideFile)
+        ProjectPathViolationException readError = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.read("project", outside)
+        );
+
+        ProjectPathViolationException rangeError = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.readRange("project", outside, 1, 1)
         );
 
         assertEquals(
-                "file path is outside registered project root: " + outsideFile,
-                exception.getMessage()
+                "Path is outside the registered project root",
+                readError.getMessage()
         );
+
+        assertEquals(
+                readError.getMessage(),
+                rangeError.getMessage()
+        );
+
+        assertFalse(readError.getMessage().contains(outside.toString()));
     }
 
     @Test
-    void shouldRejectNonExistingFile() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path missingFile = project.resolve("missing.txt");
+    void shouldRejectMissingFile() throws IOException {
+        Path project = project();
+        Path missing = project.resolve("missing.txt");
 
         ReadFileService service = service(project);
 
         assertThrows(
                 NoSuchFileException.class,
-                () -> service.read("project", missingFile)
+                () -> service.read("project", missing)
+        );
+
+        assertThrows(
+                NoSuchFileException.class,
+                () -> service.readRange("project", missing, 1, 1)
         );
     }
 
     @Test
     void shouldRejectDirectoryAsFile() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
         Path directory = Files.createDirectory(
                 project.resolve("directory")
@@ -200,125 +335,126 @@ class ReadFileServiceTest {
 
         ReadFileService service = service(project);
 
-        IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException readError = assertThrows(
                 IllegalArgumentException.class,
                 () -> service.read("project", directory)
         );
 
+        IllegalArgumentException rangeError = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.readRange("project", directory, 1, 1)
+        );
+
         assertEquals(
-                "file path must point to a regular file: " + directory.toRealPath(),
-                exception.getMessage()
+                "file path must point to a regular file: " + directory,
+                readError.getMessage()
+        );
+
+        assertEquals(
+                readError.getMessage(),
+                rangeError.getMessage()
         );
     }
 
     @Test
-    void shouldRejectSymlinkOutsideProjectRoot() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
+    void shouldRejectInternalSymlinkForReadAndRange()
+            throws IOException {
+
+        Path project = project();
+        Path target = write(project, "target.txt", "first\nsecond");
+
+        Path link = createSymlink(
+                project.resolve("internal-link.txt"),
+                target
         );
-
-        Path outsideDirectory = Files.createDirectory(
-                tempDir.resolve("outside")
-        );
-
-        Path outsideFile = Files.writeString(
-                outsideDirectory.resolve("secret.txt"),
-                "secret"
-        );
-
-        Path link = project.resolve("external-link");
-
-        try {
-            Files.createSymbolicLink(link, outsideDirectory);
-        } catch (UnsupportedOperationException | IOException | SecurityException e) {
-            assumeTrue(false, "Symbolic links are not available");
-        }
-
-        Path linkedFile = link.resolve("secret.txt");
 
         ReadFileService service = service(project);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.read("project", linkedFile)
+        assertSymlinkRejected(service, link);
+    }
+
+    @Test
+    void shouldRejectExternalSymlinkForReadAndRange()
+            throws IOException {
+
+        Path project = project();
+
+        Path outside = Files.writeString(
+                tempDir.toRealPath().resolve("secret.txt"),
+                "secret"
         );
 
-        assertEquals(
-                "real file path is outside registered project root: "
-                        + outsideFile.toRealPath(),
-                exception.getMessage()
+        Path link = createSymlink(
+                project.resolve("external-link.txt"),
+                outside
         );
+
+        ReadFileService service = service(project);
+
+        assertSymlinkRejected(service, link);
+    }
+
+    @Test
+    void shouldRejectIntermediateSymlinkDirectory()
+            throws IOException {
+
+        Path project = project();
+
+        Path directory = Files.createDirectory(
+                project.resolve("src")
+        );
+
+        write(directory, "Example.java", "hello");
+
+        Path link = createSymlink(
+                project.resolve("linked-src"),
+                directory
+        );
+
+        Path requested = link.resolve("Example.java");
+
+        assertSymlinkRejected(service(project), requested);
     }
 
     @Test
     void shouldReadSpecificLineRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\nsecond\nthird\nfourth\nfifth"
         );
 
-        ReadFileService service = service(project);
-
         assertEquals(
                 "second\nthird\nfourth",
-                service.readRange("project", file, 2, 4)
+                service(project).readRange("project", file, 2, 4)
         );
     }
 
     @Test
     void shouldReadSingleLine() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\nsecond\nthird"
         );
-
-        ReadFileService service = service(project);
 
         assertEquals(
                 "second",
-                service.readRange("project", file, 2, 2)
-        );
-    }
-
-    @Test
-    void shouldReadRangeFromNestedDirectory() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path directory = Files.createDirectories(
-                project.resolve("src/main/java")
-        );
-
-        Path file = Files.writeString(
-                directory.resolve("Example.java"),
-                "first\nsecond\nthird"
-        );
-
-        ReadFileService service = service(project);
-
-        assertEquals(
-                "second\nthird",
-                service.readRange("project", file, 2, 3)
+                service(project).readRange("project", file, 2, 2)
         );
     }
 
     @Test
     void shouldReadRangeBeyondEndOfFile() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\nsecond\nthird"
         );
 
@@ -328,20 +464,6 @@ class ReadFileServiceTest {
                 "second\nthird",
                 service.readRange("project", file, 2, 100)
         );
-    }
-
-    @Test
-    void shouldReturnEmptyContentWhenStartLineExceedsFileLength() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
-                "first\nsecond\nthird"
-        );
-
-        ReadFileService service = service(project);
 
         assertEquals(
                 "",
@@ -350,114 +472,79 @@ class ReadFileServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyContentForEmptyFile() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("empty.txt")
-        );
-
-        ReadFileService service = service(project);
-
-        assertEquals(
-                "",
-                service.readRange("project", file, 1, 10)
-        );
-    }
-
-    @Test
     void shouldPreserveEmptyLinesWithinRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\n\nthird\n\nfifth"
         );
 
-        ReadFileService service = service(project);
-
         assertEquals(
                 "\nthird\n",
-                service.readRange("project", file, 2, 4)
+                service(project).readRange("project", file, 2, 4)
         );
     }
 
     @Test
-    void shouldNormalizeWindowsLineEndings() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldNormalizeCrLfLineEndings() throws IOException {
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\r\nsecond\r\nthird"
         );
 
-        ReadFileService service = service(project);
-
         assertEquals(
                 "first\nsecond\nthird",
-                service.readRange("project", file, 1, 3)
+                service(project).readRange("project", file, 1, 3)
         );
     }
 
     @Test
-    void shouldNormalizeCarriageReturnLineEndings() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldNormalizeCrLineEndings() throws IOException {
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "first\rsecond\rthird"
         );
 
-        ReadFileService service = service(project);
-
         assertEquals(
                 "first\nsecond\nthird",
-                service.readRange("project", file, 1, 3)
+                service(project).readRange("project", file, 1, 3)
         );
     }
 
     @Test
     void shouldReadUnicodeContent() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
+        Path file = write(
+                project,
+                "Example.java",
                 "hello\nПривет\n你好\nworld"
         );
 
-        ReadFileService service = service(project);
-
         assertEquals(
                 "Привет\n你好",
-                service.readRange("project", file, 2, 3)
+                service(project).readRange("project", file, 2, 3)
         );
     }
 
     @Test
     void shouldRejectInvalidStartLine() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.readRange("project", file, 0, 10)
+                () -> service(project).readRange(
+                        "project", file, 0, 10
+                )
         );
 
         assertEquals(
@@ -468,19 +555,14 @@ class ReadFileServiceTest {
 
     @Test
     void shouldRejectEndLineBeforeStartLine() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.readRange("project", file, 10, 5)
+                () -> service(project).readRange(
+                        "project", file, 10, 5
+                )
         );
 
         assertEquals(
@@ -491,67 +573,26 @@ class ReadFileServiceTest {
 
     @Test
     void shouldAllowMaximumLineRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
+        Path project = project();
         String content = "line\n".repeat(299) + "line";
 
-        Path file = Files.writeString(
-                project.resolve("Example.java"),
-                content
-        );
-
-        ReadFileService service = service(project);
+        Path file = write(project, "Example.java", content);
 
         assertEquals(
                 content,
-                service.readRange("project", file, 1, 300)
+                service(project).readRange("project", file, 1, 300)
         );
     }
 
     @Test
     void shouldRejectLineRangeExceedingMaximum() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.readRange("project", file, 1, 301)
-        );
-
-        assertEquals(
-                "line range exceeds maximum allowed lines: 300",
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void shouldRejectLineRangeOverflow() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.readRange(
-                        "project",
-                        file,
-                        1,
-                        Integer.MAX_VALUE
+                () -> service(project).readRange(
+                        "project", file, 1, 301
                 )
         );
 
@@ -562,42 +603,51 @@ class ReadFileServiceTest {
     }
 
     @Test
-    void shouldAllowMaximumResultSize() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
+    void shouldRejectLineRangeOverflow() throws IOException {
+        Path project = project();
+        Path file = write(project, "Example.java", "hello");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service(project).readRange(
+                        "project", file, 1, Integer.MAX_VALUE
+                )
         );
 
-        String content = "a".repeat(256 * 1024);
-
-        Path file = Files.writeString(
-                project.resolve("large.txt"),
-                content
+        assertEquals(
+                "line range exceeds maximum allowed lines: 300",
+                exception.getMessage()
         );
+    }
 
-        ReadFileService service = service(project);
+    @Test
+    void shouldAllowMaximumRangeResultSize() throws IOException {
+        Path project = project();
+        String content = "a".repeat(MAX_BYTES);
+
+        Path file = write(project, "large.txt", content);
 
         assertEquals(
                 content,
-                service.readRange("project", file, 1, 1)
+                service(project).readRange("project", file, 1, 1)
         );
     }
 
     @Test
-    void shouldRejectResultSizeExceedingMaximum() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldRejectOversizedRangeResult() throws IOException {
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("large.txt"),
-                "a".repeat(256 * 1024 + 1)
+        Path file = write(
+                project,
+                "large.txt",
+                "a".repeat(MAX_BYTES + 1)
         );
-
-        ReadFileService service = service(project);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.readRange("project", file, 1, 1)
+                () -> service(project).readRange(
+                        "project", file, 1, 1
+                )
         );
 
         assertEquals(
@@ -607,21 +657,20 @@ class ReadFileServiceTest {
     }
 
     @Test
-    void shouldRejectUtf8ResultSizeExceedingMaximum() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldRejectOversizedUtf8RangeResult() throws IOException {
+        Path project = project();
 
-        Path file = Files.writeString(
-                project.resolve("unicode.txt"),
+        Path file = write(
+                project,
+                "unicode.txt",
                 "я".repeat(131_073)
         );
 
-        ReadFileService service = service(project);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.readRange("project", file, 1, 1)
+                () -> service(project).readRange(
+                        "project", file, 1, 1
+                )
         );
 
         assertEquals(
@@ -631,203 +680,86 @@ class ReadFileServiceTest {
     }
 
     @Test
-    void shouldRejectNullProjectNameForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    void shouldAllowSmallRangeFromLargeFile() throws IOException {
+        Path project = project();
 
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
-
-        NullPointerException exception = assertThrows(
-                NullPointerException.class,
-                () -> service.readRange(null, file, 1, 10)
+        Path file = write(
+                project,
+                "large.txt",
+                "first\n" + "ignored\n".repeat(40_000)
         );
 
         assertEquals(
-                "projectName must not be null",
-                exception.getMessage()
+                "first",
+                service(project).readRange("project", file, 1, 1)
         );
     }
 
-    @Test
-    void shouldRejectNullFilePathForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        ReadFileService service = service(project);
-
-        NullPointerException exception = assertThrows(
-                NullPointerException.class,
-                () -> service.readRange("project", null, 1, 10)
-        );
-
-        assertEquals(
-                "filePath must not be null",
-                exception.getMessage()
+    private Path project() throws IOException {
+        return Files.createDirectory(
+                tempDir.toRealPath().resolve("project")
         );
     }
 
-    @Test
-    void shouldRejectUnregisteredProjectForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    private Path write(Path directory, String name, String content)
+            throws IOException {
 
-        Path file = Files.createFile(
-                project.resolve("Example.java")
-        );
-
-        ReadFileService service = service(project);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.readRange("unknown", file, 1, 10)
-        );
-
-        assertEquals(
-                "project is not registered: unknown",
-                exception.getMessage()
+        return Files.writeString(
+                directory.resolve(name),
+                content
         );
     }
 
-    @Test
-    void shouldRejectFileOutsideProjectRootForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+    private ReadFileService service(Path project)
+            throws IOException {
 
-        Path outsideFile = Files.createFile(
-                tempDir.resolve("outside.txt")
-        );
-
-        ReadFileService service = service(project);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.readRange("project", outsideFile, 1, 10)
-        );
-
-        assertEquals(
-                "file path is outside registered project root: " + outsideFile,
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void shouldRejectNonExistingFileForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path missingFile = project.resolve("missing.txt");
-
-        ReadFileService service = service(project);
-
-        assertThrows(
-                NoSuchFileException.class,
-                () -> service.readRange("project", missingFile, 1, 10)
-        );
-    }
-
-    @Test
-    void shouldRejectDirectoryAsFileForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path directory = Files.createDirectory(
-                project.resolve("directory")
-        );
-
-        ReadFileService service = service(project);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.readRange("project", directory, 1, 10)
-        );
-
-        assertEquals(
-                "file path must point to a regular file: " + directory.toRealPath(),
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void shouldAllowSymlinkInsideProjectRootForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path target = Files.writeString(
-                project.resolve("target.txt"),
-                "first\nsecond\nthird"
-        );
-
-        Path link = project.resolve("internal-link.txt");
-
-        try {
-            Files.createSymbolicLink(link, target);
-        } catch (UnsupportedOperationException | IOException | SecurityException e) {
-            assumeTrue(false, "Symbolic links are not available");
-        }
-
-        ReadFileService service = service(project);
-
-        assertEquals(
-                "second\nthird",
-                service.readRange("project", link, 2, 3)
-        );
-    }
-
-    @Test
-    void shouldRejectSymlinkOutsideProjectRootForRange() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        Path outsideDirectory = Files.createDirectory(
-                tempDir.resolve("outside")
-        );
-
-        Path outsideFile = Files.writeString(
-                outsideDirectory.resolve("secret.txt"),
-                "secret"
-        );
-
-        Path link = project.resolve("external-link");
-
-        try {
-            Files.createSymbolicLink(link, outsideDirectory);
-        } catch (UnsupportedOperationException | IOException | SecurityException e) {
-            assumeTrue(false, "Symbolic links are not available");
-        }
-
-        Path linkedFile = link.resolve("secret.txt");
-
-        ReadFileService service = service(project);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.readRange("project", linkedFile, 1, 10)
-        );
-
-        assertEquals(
-                "real file path is outside registered project root: "
-                        + outsideFile.toRealPath(),
-                exception.getMessage()
-        );
-    }
-
-    private ReadFileService service(Path project) throws IOException {
         ProjectRegistry registry = new ProjectRegistry(
                 Map.of("project", project)
         );
 
         return new ReadFileService(registry);
+    }
+
+    private Path createSymlink(Path link, Path target) {
+        try {
+            return Files.createSymbolicLink(link, target);
+        } catch (
+                UnsupportedOperationException
+                | IOException
+                | SecurityException exception
+        ) {
+            assumeTrue(
+                    false,
+                    "Symbolic links are not available: "
+                            + exception.getClass().getSimpleName()
+            );
+
+            throw new AssertionError("Unreachable");
+        }
+    }
+
+    private void assertSymlinkRejected(
+            ReadFileService service,
+            Path filePath
+    ) {
+        ProjectPathViolationException readError = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.read("project", filePath)
+        );
+
+        ProjectPathViolationException rangeError = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.readRange("project", filePath, 1, 1)
+        );
+
+        assertEquals(
+                "Symbolic links are not allowed",
+                readError.getMessage()
+        );
+
+        assertEquals(
+                readError.getMessage(),
+                rangeError.getMessage()
+        );
     }
 }

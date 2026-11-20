@@ -1,7 +1,8 @@
+
 package io.github.w0nderfu11.projectcontext.application;
 
+import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathViolationException;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SearchServiceTest {
 
@@ -24,9 +26,7 @@ class SearchServiceTest {
 
     @Test
     void shouldFindFileByNameAndExtension() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path file = Files.createFile(
                 project.resolve("ProjectContextApplication.java")
@@ -41,17 +41,15 @@ class SearchServiceTest {
                 null
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(file.toRealPath().toString())
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
         );
     }
 
     @Test
     void shouldFindFileByPartialName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path file = Files.createFile(
                 project.resolve("ProjectContextApplication.java")
@@ -66,17 +64,15 @@ class SearchServiceTest {
                 null
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(file.toRealPath().toString())
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
         );
     }
 
     @Test
     void shouldIgnoreCaseInFileName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path file = Files.createFile(
                 project.resolve("ProjectContextApplication.java")
@@ -86,22 +82,20 @@ class SearchServiceTest {
 
         List<String> result = service.search(
                 "project",
-                "context",
+                "CONTEXT",
                 "java",
                 null
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(file.toRealPath().toString())
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
         );
     }
 
     @Test
     void shouldMatchExtensionExactlyIgnoringCase() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path javaFile = Files.createFile(
                 project.resolve("Example.JAVA")
@@ -116,28 +110,26 @@ class SearchServiceTest {
         List<String> result = service.search(
                 "project",
                 "example",
-                "java",
+                "JaVa",
                 null
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(javaFile.toRealPath().toString())
+        assertEquals(
+                List.of(javaFile.toRealPath().toString()),
+                result
         );
     }
 
     @Test
     void shouldSearchRecursivelyFromProjectRoot() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
-        Path sourceDirectory = Files.createDirectories(
+        Path directory = Files.createDirectories(
                 project.resolve("src/main/java/application")
         );
 
         Path file = Files.createFile(
-                sourceDirectory.resolve("SearchService.java")
+                directory.resolve("SearchService.java")
         );
 
         SearchService service = service(project);
@@ -149,17 +141,15 @@ class SearchServiceTest {
                 null
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(file.toRealPath().toString())
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
         );
     }
 
     @Test
     void shouldSearchOnlyInsideSpecifiedDirectory() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path mainDirectory = Files.createDirectories(
                 project.resolve("src/main")
@@ -186,10 +176,11 @@ class SearchServiceTest {
                 mainDirectory
         );
 
-        assertEquals(1, result.size());
-        assertTrue(
-                result.contains(mainFile.toRealPath().toString())
+        assertEquals(
+                List.of(mainFile.toRealPath().toString()),
+                result
         );
+
         assertFalse(
                 result.contains(testFile.toRealPath().toString())
         );
@@ -197,9 +188,7 @@ class SearchServiceTest {
 
     @Test
     void shouldReturnMultipleMatches() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path firstFile = Files.createFile(
                 project.resolve("ProjectContextApplication.java")
@@ -218,20 +207,18 @@ class SearchServiceTest {
                 null
         );
 
-        assertEquals(2, result.size());
-        assertTrue(
-                result.contains(firstFile.toRealPath().toString())
-        );
-        assertTrue(
-                result.contains(secondFile.toRealPath().toString())
+        assertEquals(
+                List.of(
+                        firstFile.toRealPath().toString(),
+                        secondFile.toRealPath().toString()
+                ),
+                result
         );
     }
 
     @Test
     void shouldReturnEmptyListWhenNoMatchesFound() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Files.createFile(
                 project.resolve("Example.java")
@@ -250,6 +237,36 @@ class SearchServiceTest {
     }
 
     @Test
+    void shouldReturnSortedMatches() throws IOException {
+        Path project = createProject();
+
+        Path second = Files.createFile(
+                project.resolve("BExample.java")
+        );
+
+        Path first = Files.createFile(
+                project.resolve("AExample.java")
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(
+                        first.toRealPath().toString(),
+                        second.toRealPath().toString()
+                ),
+                result
+        );
+    }
+
+    @Test
     void shouldRejectNullRegistry() {
         NullPointerException exception = assertThrows(
                 NullPointerException.class,
@@ -264,11 +281,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectNullProjectName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         NullPointerException exception = assertThrows(
                 NullPointerException.class,
@@ -288,11 +301,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectNullFileName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         NullPointerException exception = assertThrows(
                 NullPointerException.class,
@@ -312,11 +321,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectBlankFileName() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -336,11 +341,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectNullExtension() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         NullPointerException exception = assertThrows(
                 NullPointerException.class,
@@ -360,11 +361,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectBlankExtension() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -384,11 +381,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectUnregisteredProject() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
-
-        SearchService service = service(project);
+        SearchService service = service(createProject());
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -408,18 +401,16 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectDirectoryOutsideProjectRoot() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path outside = Files.createDirectory(
-                tempDir.resolve("outside")
+                tempDir.toRealPath().resolve("outside")
         );
 
         SearchService service = service(project);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        ProjectPathViolationException exception = assertThrows(
+                ProjectPathViolationException.class,
                 () -> service.search(
                         "project",
                         "example",
@@ -429,17 +420,18 @@ class SearchServiceTest {
         );
 
         assertEquals(
-                "directory path is outside registered project root: "
-                        + outside,
+                "Path is outside the registered project root",
                 exception.getMessage()
+        );
+
+        assertFalse(
+                exception.getMessage().contains(outside.toString())
         );
     }
 
     @Test
     void shouldRejectNonExistingDirectory() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path missing = project.resolve("missing");
 
@@ -458,9 +450,7 @@ class SearchServiceTest {
 
     @Test
     void shouldRejectFileInsteadOfDirectory() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
-        );
+        Path project = createProject();
 
         Path file = Files.createFile(
                 project.resolve("Example.java")
@@ -486,25 +476,36 @@ class SearchServiceTest {
     }
 
     @Test
-    void shouldRejectSymlinkDirectoryOutsideProjectRoot() throws IOException {
-        Path project = Files.createDirectory(
-                tempDir.resolve("project")
+    void shouldRejectRelativeDirectory() throws IOException {
+        SearchService service = service(createProject());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
+                        Path.of("src/main")
+                )
         );
 
-        Path outside = Files.createDirectory(
-                tempDir.resolve("outside")
+        assertEquals(
+                "requestedPath must be absolute",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectDirectoryTraversal() throws IOException {
+        Path project = createProject();
+
+        Path directory = Files.createDirectory(
+                project.resolve("src")
         );
 
-        Path link = project.resolve("outside-link");
-
-        try {
-            Files.createSymbolicLink(link, outside);
-        } catch (UnsupportedOperationException | IOException | SecurityException e) {
-            Assumptions.assumeTrue(
-                    false,
-                    "Symbolic links are not available"
-            );
-        }
+        Path requestedPath = directory
+                .resolve("..")
+                .resolve("src");
 
         SearchService service = service(project);
 
@@ -514,22 +515,311 @@ class SearchServiceTest {
                         "project",
                         "example",
                         "java",
+                        requestedPath
+                )
+        );
+
+        assertEquals(
+                "requestedPath must not contain '..' segments",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectSymlinkDirectoryOutsideProjectRoot()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path outside = Files.createDirectory(
+                tempDir.toRealPath().resolve("outside")
+        );
+
+        Path link = createSymlink(
+                project.resolve("outside-link"),
+                outside
+        );
+
+        SearchService service = service(project);
+
+        ProjectPathViolationException exception = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
                         link
                 )
         );
 
         assertEquals(
-                "real directory path is outside registered project root: "
-                        + outside.toRealPath(),
+                "Symbolic links are not allowed",
                 exception.getMessage()
         );
     }
 
-    private SearchService service(Path project) throws IOException {
+    @Test
+    void shouldRejectSymlinkDirectoryInsideProject()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path directory = Files.createDirectory(
+                project.resolve("src")
+        );
+
+        Path link = createSymlink(
+                project.resolve("src-link"),
+                directory
+        );
+
+        SearchService service = service(project);
+
+        ProjectPathViolationException exception = assertThrows(
+                ProjectPathViolationException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
+                        link
+                )
+        );
+
+        assertEquals(
+                "Symbolic links are not allowed",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldSkipExternalSymlinkDirectoryDuringSearch()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path outside = Files.createDirectory(
+                tempDir.toRealPath().resolve("outside")
+        );
+
+        Files.createFile(
+                outside.resolve("Example.java")
+        );
+
+        createSymlink(
+                project.resolve("external-directory"),
+                outside
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldSkipInternalSymlinkDirectoryDuringSearch()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path directory = Files.createDirectory(
+                project.resolve("src")
+        );
+
+        Path file = Files.createFile(
+                directory.resolve("Example.java")
+        );
+
+        createSymlink(
+                project.resolve("linked-src"),
+                directory
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
+        );
+    }
+
+    @Test
+    void shouldSkipExternalSymlinkFileDuringSearch()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path outsideFile = Files.createFile(
+                tempDir.toRealPath().resolve("Example.java")
+        );
+
+        createSymlink(
+                project.resolve("Example.java"),
+                outsideFile
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldSkipInternalSymlinkFileDuringSearch()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path original = Files.createFile(
+                project.resolve("Original.java")
+        );
+
+        createSymlink(
+                project.resolve("OriginalCopy.java"),
+                original
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "original",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(original.toRealPath().toString()),
+                result
+        );
+    }
+
+    @Test
+    void shouldSkipDanglingSymlinkDuringSearch()
+            throws IOException {
+
+        Path project = createProject();
+
+        createSymlink(
+                project.resolve("Example.java"),
+                project.resolve("missing.java")
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldContinueSearchingAfterUnsafeEntry()
+            throws IOException {
+
+        Path project = createProject();
+
+        Path validFile = Files.createFile(
+                project.resolve("Example.java")
+        );
+
+        Path outsideFile = Files.createFile(
+                tempDir.toRealPath().resolve("ExternalExample.java")
+        );
+
+        createSymlink(
+                project.resolve("LinkedExample.java"),
+                outsideFile
+        );
+
+        SearchService service = service(project);
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(validFile.toRealPath().toString()),
+                result
+        );
+    }
+
+    @Test
+    void shouldRejectDeletedProjectRoot() throws IOException {
+        Path project = createProject();
+
+        SearchService service = service(project);
+
+        Files.delete(project);
+
+        assertThrows(
+                NoSuchFileException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
+                        null
+                )
+        );
+    }
+
+    private Path createProject() throws IOException {
+        return Files.createDirectory(
+                tempDir.toRealPath().resolve("project")
+        );
+    }
+
+    private SearchService service(Path project)
+            throws IOException {
+
         ProjectRegistry registry = new ProjectRegistry(
                 Map.of("project", project)
         );
 
         return new SearchService(registry);
+    }
+
+    private Path createSymlink(Path link, Path target) {
+        try {
+            return Files.createSymbolicLink(link, target);
+        } catch (
+                UnsupportedOperationException
+                | IOException
+                | SecurityException exception
+        ) {
+            assumeTrue(
+                    false,
+                    "Symbolic links are not available: "
+                            + exception.getClass().getSimpleName()
+            );
+
+            throw new AssertionError("Unreachable");
+        }
     }
 }
