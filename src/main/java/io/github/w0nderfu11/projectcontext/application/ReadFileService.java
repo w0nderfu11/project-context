@@ -1,18 +1,26 @@
 
 package io.github.w0nderfu11.projectcontext.application;
 
+import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathResolver;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Objects;
+import java.util.Set;
 
 public final class ReadFileService {
 
@@ -23,17 +31,15 @@ public final class ReadFileService {
     private static final Logger log =
             LoggerFactory.getLogger(ReadFileService.class);
 
-    private final ProjectRegistry projectRegistry;
+    private final ProjectPathResolver pathResolver;
 
     public ReadFileService(ProjectRegistry projectRegistry) {
-        this.projectRegistry = Objects.requireNonNull(
-                projectRegistry,
-                "projectRegistry must not be null"
-        );
+        this.pathResolver = new ProjectPathResolver(projectRegistry);
     }
 
+    public String read(String projectName, Path filePath)
+            throws IOException {
 
-    public String read(String projectName, Path filePath) throws IOException {
         log.debug(
                 "Starting file read: projectName={}, filePath={}",
                 projectName,
@@ -44,7 +50,7 @@ public final class ReadFileService {
 
         String content;
 
-        try (InputStream input = Files.newInputStream(realPath)) {
+        try (InputStream input = openReadStream(realPath)) {
             byte[] bytes = input.readNBytes(MAX_FILE_BYTES + 1);
 
             if (bytes.length > MAX_FILE_BYTES) {
@@ -71,13 +77,13 @@ public final class ReadFileService {
         return content;
     }
 
-
     public String readRange(
             String projectName,
             Path filePath,
             int startLine,
             int endLine
     ) throws IOException {
+
         if (startLine < 1 || endLine < startLine) {
             throw new IllegalArgumentException(
                     "invalid line range: startLine=" + startLine
@@ -87,7 +93,8 @@ public final class ReadFileService {
 
         if ((long) endLine - startLine + 1 > MAX_RANGE_LINES) {
             throw new IllegalArgumentException(
-                    "line range exceeds maximum allowed lines: " + MAX_RANGE_LINES
+                    "line range exceeds maximum allowed lines: "
+                            + MAX_RANGE_LINES
             );
         }
 
@@ -103,7 +110,12 @@ public final class ReadFileService {
 
         StringBuilder content = new StringBuilder();
 
-        try (var reader = Files.newBufferedReader(realPath)) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                        openReadStream(realPath),
+                        StandardCharsets.UTF_8.newDecoder()
+                )
+        )) {
             int currentLine = 1;
             int character;
 
@@ -156,7 +168,8 @@ public final class ReadFileService {
             }
         }
 
-        if (content.toString().getBytes(StandardCharsets.UTF_8).length > MAX_RANGE_BYTES) {
+        if (content.toString()
+                .getBytes(StandardCharsets.UTF_8).length > MAX_RANGE_BYTES) {
             throw new IllegalArgumentException(
                     "file range exceeds maximum allowed size: "
                             + MAX_RANGE_BYTES + " bytes"
@@ -180,33 +193,36 @@ public final class ReadFileService {
                 "projectName must not be null"
         );
 
-        projectRegistry.getRoot(projectName);
+        pathResolver.getRoot(projectName);
     }
 
-    private Path resolveReadableFile(String projectName, Path filePath)
-            throws IOException {
-        Objects.requireNonNull(projectName, "projectName must not be null");
-        Objects.requireNonNull(filePath, "filePath must not be null");
+    private Path resolveReadableFile(
+            String projectName,
+            Path filePath
+    ) throws IOException {
 
-        Path rootPath = projectRegistry.getRoot(projectName);
+        Objects.requireNonNull(
+                projectName,
+                "projectName must not be null"
+        );
 
-        if (!filePath.startsWith(rootPath)) {
+        Objects.requireNonNull(
+                filePath,
+                "filePath must not be null"
+        );
+
+        Path realPath = pathResolver.resolve(
+                projectName,
+                filePath
+        );
+
+        if (!Files.isRegularFile(
+                realPath,
+                LinkOption.NOFOLLOW_LINKS
+        )) {
             throw new IllegalArgumentException(
-                    "file path is outside registered project root: " + filePath
-            );
-        }
-
-        Path realPath = filePath.toRealPath();
-
-        if (!realPath.startsWith(rootPath)) {
-            throw new IllegalArgumentException(
-                    "real file path is outside registered project root: " + realPath
-            );
-        }
-
-        if (!Files.isRegularFile(realPath)) {
-            throw new IllegalArgumentException(
-                    "file path must point to a regular file: " + realPath
+                    "file path must point to a regular file: "
+                            + realPath
             );
         }
 
@@ -217,5 +233,19 @@ public final class ReadFileService {
         }
 
         return realPath;
+    }
+
+    private InputStream openReadStream(Path filePath)
+            throws IOException {
+
+        return Channels.newInputStream(
+                Files.newByteChannel(
+                        filePath,
+                        Set.<OpenOption>of(
+                                StandardOpenOption.READ,
+                                LinkOption.NOFOLLOW_LINKS
+                        )
+                )
+        );
     }
 }

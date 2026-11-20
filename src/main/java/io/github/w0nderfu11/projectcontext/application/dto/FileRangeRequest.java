@@ -1,5 +1,5 @@
 
-package io.github.w0nderfu11.projectcontext.application;
+package io.github.w0nderfu11.projectcontext.application.dto;
 
 import java.nio.file.Path;
 import java.util.Objects;

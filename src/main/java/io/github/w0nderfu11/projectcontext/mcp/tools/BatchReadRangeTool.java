@@ -2,9 +2,9 @@
 package io.github.w0nderfu11.projectcontext.mcp.tools;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.w0nderfu11.projectcontext.application.BatchReadResult;
+import io.github.w0nderfu11.projectcontext.application.dto.BatchReadResult;
 import io.github.w0nderfu11.projectcontext.application.BatchReadService;
-import io.github.w0nderfu11.projectcontext.application.FileRangeRequest;
+import io.github.w0nderfu11.projectcontext.application.dto.FileRangeRequest;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
