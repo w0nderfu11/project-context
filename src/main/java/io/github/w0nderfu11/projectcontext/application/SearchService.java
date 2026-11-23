@@ -2,6 +2,8 @@
 package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathResolver;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +28,27 @@ public final class SearchService {
             LoggerFactory.getLogger(SearchService.class);
 
     private final ProjectPathResolver pathResolver;
+    private final ProjectAccessPolicy accessPolicy;
 
     public SearchService(ProjectRegistry projectRegistry) {
+        this(
+                projectRegistry,
+                new ProjectAccessPolicy(
+                        projectRegistry,
+                        PolicyConfiguration.empty()
+                )
+        );
+    }
+
+    public SearchService(
+            ProjectRegistry projectRegistry,
+            ProjectAccessPolicy accessPolicy
+    ) {
         this.pathResolver = new ProjectPathResolver(projectRegistry);
+        this.accessPolicy = Objects.requireNonNull(
+                accessPolicy,
+                "accessPolicy must not be null"
+        );
     }
 
     public List<String> search(
@@ -77,6 +97,11 @@ public final class SearchService {
         Path searchPath = pathResolver.resolve(
                 projectName,
                 requestedDirectory
+        );
+
+        accessPolicy.checkAccess(
+                projectName,
+                searchPath
         );
 
         if (!Files.isDirectory(
@@ -132,6 +157,13 @@ public final class SearchService {
                                     projectName,
                                     entry
                             );
+
+                            if (accessPolicy.isExcluded(
+                                    projectName,
+                                    realPath
+                            )) {
+                                continue;
+                            }
 
                             if (Files.isDirectory(
                                     realPath,

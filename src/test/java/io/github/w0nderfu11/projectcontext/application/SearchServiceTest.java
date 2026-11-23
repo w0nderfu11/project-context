@@ -2,6 +2,10 @@
 package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathViolationException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessDeniedException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -789,6 +793,348 @@ class SearchServiceTest {
         );
     }
 
+    @Test
+    void shouldRejectNullAccessPolicy() throws IOException {
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", createProject())
+        );
+
+        NullPointerException exception = assertThrows(
+                NullPointerException.class,
+                () -> new SearchService(
+                        registry,
+                        null
+                )
+        );
+
+        assertEquals(
+                "accessPolicy must not be null",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldReturnSortedRecursiveMatchesWithEmptyPolicy() throws IOException {
+        Path project = createProject();
+
+        Files.createDirectories(
+                project.resolve("src")
+        );
+        Path second = Files.createFile(
+                project.resolve("src/Example.java")
+        );
+        Path first = Files.createFile(
+                project.resolve("AExample.java")
+        );
+
+        SearchService service = service(
+                project,
+                PolicyConfiguration.empty()
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(
+                        first.toRealPath().toString(),
+                        second.toRealPath().toString()
+                ),
+                result
+        );
+    }
+
+    @Test
+    void shouldReturnMatchesWhenRulesDoNotApply() throws IOException {
+        Path project = createProject();
+
+        Path file = Files.createFile(
+                project.resolve("Example.java")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of("Other.java"),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
+        );
+    }
+
+    @Test
+    void shouldSkipFileExcludedByGlobalName() throws IOException {
+        Path project = createProject();
+
+        Path second = Files.createFile(
+                project.resolve("ZExample.java")
+        );
+        Files.createFile(
+                project.resolve("PrivateExample.java")
+        );
+        Path first = Files.createFile(
+                project.resolve("AExample.java")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of("PrivateExample.java"),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(
+                        first.toRealPath().toString(),
+                        second.toRealPath().toString()
+                ),
+                result
+        );
+    }
+
+    @Test
+    void shouldSkipFilesExcludedByGlobalExtension() throws IOException {
+        Path project = createProject();
+
+        Files.createFile(
+                project.resolve("Example.JAVA")
+        );
+        Files.createFile(
+                project.resolve("AnotherExample.java")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(".java"),
+                List.of(),
+                List.of()
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldSkipOnlyFileExcludedByProjectPath() throws IOException {
+        Path project = createProject();
+
+        Files.createDirectories(
+                project.resolve("src")
+        );
+        Files.createFile(
+                project.resolve("src/Example.java")
+        );
+        Path file = Files.createFile(
+                project.resolve("Example.java")
+        );
+
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("src/Example.java"),
+                List.of()
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(file.toRealPath().toString()),
+                result
+        );
+    }
+
+    @Test
+    void shouldSkipExcludedDirectoryAndItsDescendants() throws IOException {
+        Path project = createProject();
+
+        Files.createDirectories(
+                project.resolve("private/nested")
+        );
+        Files.createDirectories(
+                project.resolve("src")
+        );
+        Files.createDirectories(
+                project.resolve("public")
+        );
+        Files.createFile(
+                project.resolve("private/Example.java")
+        );
+        Files.createFile(
+                project.resolve("private/nested/Example.java")
+        );
+        Path sourceFile = Files.createFile(
+                project.resolve("src/Example.java")
+        );
+        Path publicFile = Files.createFile(
+                project.resolve("public/Example.java")
+        );
+
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private")
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+
+        List<String> result = service.search(
+                "project",
+                "example",
+                "java",
+                null
+        );
+
+        assertEquals(
+                List.of(
+                        publicFile.toRealPath().toString(),
+                        sourceFile.toRealPath().toString()
+                ),
+                result
+        );
+    }
+
+    @Test
+    void shouldRejectSearchInsideExcludedDirectory() throws IOException {
+        Path project = createProject();
+
+        Path directory = Files.createDirectories(
+                project.resolve("private")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private")
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        ProjectAccessDeniedException exception = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
+                        directory
+                )
+        );
+
+        assertEquals(
+                "Access denied by GLOBAL DIRECTORY_PATH rule: private",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectSearchInsideDescendantOfExcludedDirectory() throws IOException {
+        Path project = createProject();
+
+        Path directory = Files.createDirectories(
+                project.resolve("private/nested")
+        );
+
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private")
+        );
+        SearchService service = service(
+                project,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+
+        ProjectAccessDeniedException exception = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.search(
+                        "project",
+                        "example",
+                        "java",
+                        directory
+                )
+        );
+
+        assertEquals(
+                "Access denied by PROJECT DIRECTORY_PATH rule: private",
+                exception.getMessage()
+        );
+    }
+
     private Path createProject() throws IOException {
         return Files.createDirectory(
                 tempDir.toRealPath().resolve("project")
@@ -803,6 +1149,25 @@ class SearchServiceTest {
         );
 
         return new SearchService(registry);
+    }
+
+    private SearchService service(
+            Path project,
+            PolicyConfiguration configuration
+    ) throws IOException {
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project)
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                configuration
+        );
+
+        return new SearchService(
+                registry,
+                accessPolicy
+        );
     }
 
     private Path createSymlink(Path link, Path target) {
