@@ -2,6 +2,7 @@
 package io.github.w0nderfu11.projectcontext.mcp.tools;
 
 import io.github.w0nderfu11.projectcontext.application.ReadFileService;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessDeniedException;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
@@ -198,6 +199,10 @@ public final class ReadFileRangeTool {
     }
 
     private static String safeErrorMessage(Exception exception) {
+        if (exception instanceof ProjectAccessDeniedException) {
+            return exception.getMessage();
+        }
+
         if (exception instanceof IllegalArgumentException) {
             String message = exception.getMessage();
 
