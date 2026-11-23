@@ -3,6 +3,9 @@ package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.application.dto.BatchReadResult;
 import io.github.w0nderfu11.projectcontext.application.dto.FileRangeRequest;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -707,6 +710,103 @@ class BatchReadServiceTest {
         );
     }
 
+    @Test
+    void shouldContinueAfterFileExcludedByPolicy() throws IOException {
+        Path project = project();
+        Path first = write(project, "first.txt", "first");
+        Path excluded = write(project, "server.log", "excluded content");
+        Path last = write(project, "last.txt", "last");
+
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(".log"),
+                List.of(),
+                List.of()
+        );
+        BatchReadService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        List<Path> files = List.of(first, excluded, last);
+        Map<Path, BatchReadResult> result = service.read("project", files);
+
+        assertEquals(files, new ArrayList<>(result.keySet()));
+        assertEquals("first", result.get(first).content());
+        assertNull(result.get(first).error());
+        assertNull(result.get(excluded).content());
+        assertEquals(
+                "Access denied by GLOBAL EXTENSION rule: .log",
+                result.get(excluded).error()
+        );
+        assertEquals("last", result.get(last).content());
+        assertNull(result.get(last).error());
+    }
+
+    @Test
+    void shouldContinueAfterRangeExcludedByPolicy() throws IOException {
+        Path project = project();
+        Path allowed = write(project, "allowed.txt", "first\nsecond\nthird");
+        Path excluded = write(project, "private.txt", "excluded content");
+
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("private.txt"),
+                List.of()
+        );
+        BatchReadService service = service(
+                project,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+
+        FileRangeRequest first = new FileRangeRequest(allowed, 1, 1);
+        FileRangeRequest denied = new FileRangeRequest(excluded, 1, 1);
+        FileRangeRequest last = new FileRangeRequest(allowed, 2, 3);
+        List<FileRangeRequest> requests = List.of(first, denied, last);
+
+        Map<FileRangeRequest, BatchReadResult> result =
+                service.readRanges("project", requests);
+
+        assertEquals(requests, new ArrayList<>(result.keySet()));
+        assertEquals("first", result.get(first).content());
+        assertNull(result.get(first).error());
+        assertNull(result.get(denied).content());
+        assertEquals(
+                "Access denied by PROJECT FILE_PATH rule: private.txt",
+                result.get(denied).error()
+        );
+        assertEquals("second\nthird", result.get(last).content());
+        assertNull(result.get(last).error());
+    }
+
+    @Test
+    void shouldReadFilesAndRangesWithEmptyPolicy() throws IOException {
+        Path project = project();
+        Path file = write(project, ".env", "first\nsecond");
+        FileRangeRequest request = new FileRangeRequest(file, 2, 2);
+        BatchReadService service = service(
+                project,
+                PolicyConfiguration.empty()
+        );
+
+        BatchReadResult full = service.read("project", List.of(file))
+                .get(file);
+        BatchReadResult range = service.readRanges("project", List.of(request))
+                .get(request);
+
+        assertEquals("first\nsecond", full.content());
+        assertNull(full.error());
+        assertEquals("second", range.content());
+        assertNull(range.error());
+    }
+
     private Path project() throws IOException {
         return Files.createDirectory(
                 tempDir.toRealPath().resolve("project")
@@ -734,6 +834,26 @@ class BatchReadServiceTest {
 
         ReadFileService readFileService =
                 new ReadFileService(registry);
+
+        return new BatchReadService(readFileService);
+    }
+
+    private BatchReadService service(
+            Path project,
+            PolicyConfiguration configuration
+    ) throws IOException {
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project)
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                configuration
+        );
+        ReadFileService readFileService = new ReadFileService(
+                registry,
+                accessPolicy
+        );
 
         return new BatchReadService(readFileService);
     }
