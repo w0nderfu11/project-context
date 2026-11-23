@@ -3,6 +3,7 @@ package io.github.w0nderfu11.projectcontext.mcp;
 
 import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.GetAccessPolicyTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
@@ -33,7 +34,8 @@ public final class ProjectContextMcpServer implements AutoCloseable {
             BatchReadTool batchReadTool,
             BatchReadRangeTool batchReadRangeTool,
             GetCurrentTreeTool getCurrentTreeTool,
-            SearchTool searchTool
+            SearchTool searchTool,
+            GetAccessPolicyTool getAccessPolicyTool
     ) {
         Objects.requireNonNull(transport, "transport must not be null");
         Objects.requireNonNull(pingTool, "pingTool must not be null");
@@ -65,6 +67,10 @@ public final class ProjectContextMcpServer implements AutoCloseable {
                 searchTool,
                 "searchTool must not be null"
         );
+        Objects.requireNonNull(
+                getAccessPolicyTool,
+                "getAccessPolicyTool must not be null"
+        );
 
         this.server = McpServer.sync(transport.transport())
                 .serverInfo(SERVER_NAME, projectVersion())
@@ -76,7 +82,8 @@ public final class ProjectContextMcpServer implements AutoCloseable {
                         batchReadTool.specification(),
                         batchReadRangeTool.specification(),
                         getCurrentTreeTool.specification(),
-                        searchTool.specification()
+                        searchTool.specification(),
+                        getAccessPolicyTool.specification()
                 )
                 .build();
     }
