@@ -2,6 +2,10 @@
 package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathViolationException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessDeniedException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,6 +15,7 @@ import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -695,6 +700,144 @@ class ReadFileServiceTest {
         );
     }
 
+    @Test
+    void shouldRejectNullAccessPolicy() throws IOException {
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project())
+        );
+
+        NullPointerException exception = assertThrows(
+                NullPointerException.class,
+                () -> new ReadFileService(
+                        registry,
+                        null
+                )
+        );
+
+        assertEquals("accessPolicy must not be null", exception.getMessage());
+    }
+
+    @Test
+    void shouldReadFileAndRangeWithEmptyPolicy() throws IOException {
+        Path project = project();
+        Path file = write(project, ".env", "first\nsecond");
+        ReadFileService service = service(
+                project,
+                PolicyConfiguration.empty()
+        );
+
+        assertEquals("first\nsecond", service.read("project", file));
+        assertEquals("second", service.readRange("project", file, 2, 2));
+    }
+
+    @Test
+    void shouldApplyGlobalFileNameRuleToFullAndRangeReads() throws IOException {
+        Path project = project();
+        Path excluded = Files.write(
+                project.resolve(".env"),
+                new byte[]{(byte) 0xC3, (byte) 0x28}
+        );
+        Path allowed = write(project, "docker.env", "first\nsecond");
+        PolicyRules global = new PolicyRules(
+                List.of(".env"),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        ReadFileService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        assertAccessDenied(
+                service,
+                excluded,
+                "Access denied by GLOBAL FILE_NAME rule: .env"
+        );
+        assertEquals("first\nsecond", service.read("project", allowed));
+        assertEquals("second", service.readRange("project", allowed, 2, 2));
+    }
+
+    @Test
+    void shouldRejectFileExcludedByGlobalExtension() throws IOException {
+        Path project = project();
+        Path file = write(project, "server.LOG", "log content");
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(".log"),
+                List.of(),
+                List.of()
+        );
+        ReadFileService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        assertAccessDenied(
+                service,
+                file,
+                "Access denied by GLOBAL EXTENSION rule: .log"
+        );
+    }
+
+    @Test
+    void shouldRejectFileExcludedByProjectPath() throws IOException {
+        Path project = project();
+        Path config = Files.createDirectory(project.resolve("config"));
+        Path file = write(config, "local.json", "configuration");
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("config/local.json"),
+                List.of()
+        );
+        ReadFileService service = service(
+                project,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+
+        assertAccessDenied(
+                service,
+                file,
+                "Access denied by PROJECT FILE_PATH rule: config/local.json"
+        );
+    }
+
+    @Test
+    void shouldRejectDirectReadInsideExcludedDirectory() throws IOException {
+        Path project = project();
+        Path nested = Files.createDirectories(project.resolve("private/nested"));
+        Path file = write(nested, "key.txt", "key content");
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private")
+        );
+        ReadFileService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        assertAccessDenied(
+                service,
+                file,
+                "Access denied by GLOBAL DIRECTORY_PATH rule: private"
+        );
+    }
+
     private Path project() throws IOException {
         return Files.createDirectory(
                 tempDir.toRealPath().resolve("project")
@@ -718,6 +861,43 @@ class ReadFileServiceTest {
         );
 
         return new ReadFileService(registry);
+    }
+
+    private ReadFileService service(
+            Path project,
+            PolicyConfiguration configuration
+    ) throws IOException {
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project)
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                configuration
+        );
+
+        return new ReadFileService(
+                registry,
+                accessPolicy
+        );
+    }
+
+    private void assertAccessDenied(
+            ReadFileService service,
+            Path file,
+            String message
+    ) {
+        ProjectAccessDeniedException readError = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.read("project", file)
+        );
+        ProjectAccessDeniedException rangeError = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.readRange("project", file, 1, 1)
+        );
+
+        assertEquals(message, readError.getMessage());
+        assertEquals(message, rangeError.getMessage());
     }
 
     private Path createSymlink(Path link, Path target) {

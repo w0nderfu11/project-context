@@ -3,6 +3,7 @@ package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.application.dto.BatchReadResult;
 import io.github.w0nderfu11.projectcontext.application.dto.FileRangeRequest;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -175,6 +176,10 @@ public final class BatchReadService {
     }
 
     private static String safeErrorMessage(Exception exception) {
+        if (exception instanceof ProjectAccessDeniedException) {
+            return exception.getMessage();
+        }
+
         if (exception instanceof NoSuchFileException) {
             return "File not found";
         }

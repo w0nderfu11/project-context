@@ -3,6 +3,8 @@ package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.application.enums.TreeEntryType;
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathResolver;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,9 +26,27 @@ public final class GetCurrentTreeService {
             LoggerFactory.getLogger(GetCurrentTreeService.class);
 
     private final ProjectPathResolver pathResolver;
+    private final ProjectAccessPolicy accessPolicy;
 
     public GetCurrentTreeService(ProjectRegistry projectRegistry) {
+        this(
+                projectRegistry,
+                new ProjectAccessPolicy(
+                        projectRegistry,
+                        PolicyConfiguration.empty()
+                )
+        );
+    }
+
+    public GetCurrentTreeService(
+            ProjectRegistry projectRegistry,
+            ProjectAccessPolicy accessPolicy
+    ) {
         this.pathResolver = new ProjectPathResolver(projectRegistry);
+        this.accessPolicy = Objects.requireNonNull(
+                accessPolicy,
+                "accessPolicy must not be null"
+        );
     }
 
     public Map<String, TreeEntryType> get(
@@ -53,6 +73,11 @@ public final class GetCurrentTreeService {
                 directoryPath
         );
 
+        accessPolicy.checkAccess(
+                projectName,
+                realDirectory
+        );
+
         if (!Files.isDirectory(
                 realDirectory,
                 LinkOption.NOFOLLOW_LINKS
@@ -74,6 +99,13 @@ public final class GetCurrentTreeService {
                             projectName,
                             entry
                     );
+
+                    if (accessPolicy.isExcluded(
+                            projectName,
+                            realEntry
+                    )) {
+                        continue;
+                    }
 
                     BasicFileAttributes attributes =
                             Files.readAttributes(

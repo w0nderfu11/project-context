@@ -3,6 +3,10 @@ package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.application.enums.TreeEntryType;
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathViolationException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessDeniedException;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -658,6 +663,138 @@ class GetCurrentTreeServiceTest {
         );
     }
 
+    @Test
+    void shouldRejectNullAccessPolicy() throws IOException {
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project())
+        );
+
+        NullPointerException exception = assertThrows(
+                NullPointerException.class,
+                () -> new GetCurrentTreeService(
+                        registry,
+                        null
+                )
+        );
+
+        assertEquals(
+                "accessPolicy must not be null",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldReturnOnlyAllowedEntriesFromProjectRoot()
+            throws IOException {
+
+        Path project = project();
+
+        Files.createFile(
+                project.resolve("secret.txt")
+        );
+        Files.createFile(
+                project.resolve("debug.LOG")
+        );
+        Files.createFile(
+                project.resolve("local.json")
+        );
+        Files.createDirectory(
+                project.resolve("private")
+        );
+
+        Path file = Files.createFile(
+                project.resolve("README.md")
+        );
+        Path directory = Files.createDirectory(
+                project.resolve("src")
+        );
+        Files.createFile(
+                directory.resolve("local.json")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of("secret.txt"),
+                List.of(".log"),
+                List.of(),
+                List.of()
+        );
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("local.json"),
+                List.of("private")
+        );
+        GetCurrentTreeService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of("project", rules)
+                )
+        );
+
+        assertEquals(
+                Map.of(
+                        file.toString(),
+                        TreeEntryType.FILE,
+                        directory.toString(),
+                        TreeEntryType.DIRECTORY
+                ),
+                service.get("project", project)
+        );
+        assertEquals(
+                Map.of(
+                        directory.resolve("local.json").toString(),
+                        TreeEntryType.FILE
+                ),
+                service.get("project", directory)
+        );
+    }
+
+    @Test
+    void shouldRejectListingExcludedDirectoryAndItsDescendant()
+            throws IOException {
+
+        Path project = project();
+        Path directory = Files.createDirectory(
+                project.resolve("private")
+        );
+        Path nested = Files.createDirectory(
+                directory.resolve("nested")
+        );
+
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private")
+        );
+        GetCurrentTreeService service = service(
+                project,
+                new PolicyConfiguration(
+                        global,
+                        Map.of()
+                )
+        );
+
+        ProjectAccessDeniedException directError = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.get("project", directory)
+        );
+        ProjectAccessDeniedException nestedError = assertThrows(
+                ProjectAccessDeniedException.class,
+                () -> service.get("project", nested)
+        );
+
+        assertEquals(
+                "Access denied by GLOBAL DIRECTORY_PATH rule: private",
+                directError.getMessage()
+        );
+        assertEquals(
+                "Access denied by GLOBAL DIRECTORY_PATH rule: private",
+                nestedError.getMessage()
+        );
+    }
+
     private Path project() throws IOException {
         return Files.createDirectory(
                 tempDir.toRealPath().resolve("project")
@@ -672,6 +809,25 @@ class GetCurrentTreeServiceTest {
         );
 
         return new GetCurrentTreeService(registry);
+    }
+
+    private GetCurrentTreeService service(
+            Path project,
+            PolicyConfiguration configuration
+    ) throws IOException {
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", project)
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                configuration
+        );
+
+        return new GetCurrentTreeService(
+                registry,
+                accessPolicy
+        );
     }
 
     private Path createSymlink(Path link, Path target) {

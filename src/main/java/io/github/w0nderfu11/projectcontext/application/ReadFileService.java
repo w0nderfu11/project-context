@@ -2,6 +2,8 @@
 package io.github.w0nderfu11.projectcontext.application;
 
 import io.github.w0nderfu11.projectcontext.filesystem.ProjectPathResolver;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +34,27 @@ public final class ReadFileService {
             LoggerFactory.getLogger(ReadFileService.class);
 
     private final ProjectPathResolver pathResolver;
+    private final ProjectAccessPolicy accessPolicy;
 
     public ReadFileService(ProjectRegistry projectRegistry) {
+        this(
+                projectRegistry,
+                new ProjectAccessPolicy(
+                        projectRegistry,
+                        PolicyConfiguration.empty()
+                )
+        );
+    }
+
+    public ReadFileService(
+            ProjectRegistry projectRegistry,
+            ProjectAccessPolicy accessPolicy
+    ) {
         this.pathResolver = new ProjectPathResolver(projectRegistry);
+        this.accessPolicy = Objects.requireNonNull(
+                accessPolicy,
+                "accessPolicy must not be null"
+        );
     }
 
     public String read(String projectName, Path filePath)
@@ -215,6 +235,8 @@ public final class ReadFileService {
                 projectName,
                 filePath
         );
+
+        accessPolicy.checkAccess(projectName, realPath);
 
         if (!Files.isRegularFile(
                 realPath,

@@ -2,6 +2,9 @@
 package io.github.w0nderfu11.projectcontext.mcp.tools;
 
 import io.github.w0nderfu11.projectcontext.application.ReadFileService;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
+import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -16,6 +19,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -575,6 +579,54 @@ class ReadFileRangeToolTest {
                 result,
                 "Unable to read the requested file range"
         );
+    }
+
+    @Test
+    void shouldReturnProjectFilePathAccessDeniedMessage() throws IOException {
+        Path file = Files.writeString(
+                tempDir.resolve("blocked.java"),
+                "excluded content"
+        );
+
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", tempDir)
+        );
+        PolicyRules rules = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("blocked.java"),
+                List.of()
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                new PolicyConfiguration(
+                        PolicyRules.empty(),
+                        Map.of("project", rules)
+                )
+        );
+        ReadFileRangeTool readFileRangeTool = new ReadFileRangeTool(
+                new ReadFileService(
+                        registry,
+                        accessPolicy
+                )
+        );
+
+        McpSchema.CallToolResult result = call(
+                readFileRangeTool,
+                Map.of(
+                        "projectName", "project",
+                        "filePath", file.toString(),
+                        "startLine", 1,
+                        "endLine", 5
+                )
+        );
+
+        assertError(
+                result,
+                "Access denied by PROJECT FILE_PATH rule: blocked.java"
+        );
+        assertEquals(1, result.content().size());
+        assertNull(result.structuredContent());
     }
 
     private ReadFileRangeTool tool() throws IOException {
