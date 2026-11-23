@@ -85,13 +85,21 @@ public final class PolicyConfigurationService {
         }
 
         PolicyRules updatedRules = rules.withValues(type, values);
-        PolicyConfiguration proposedConfiguration = getPolicyConfiguration(scope, projectName, updatedRules);
+        PolicyConfiguration proposedConfiguration = buildUpdatedConfiguration(
+                scope,
+                projectName,
+                updatedRules
+        );
 
         store.save(proposedConfiguration);
         configuration = proposedConfiguration;
     }
 
-    private PolicyConfiguration getPolicyConfiguration(PolicyScope scope, String projectName, PolicyRules updatedRules) {
+    private PolicyConfiguration buildUpdatedConfiguration(
+            PolicyScope scope,
+            String projectName,
+            PolicyRules updatedRules
+    ) {
         PolicyConfiguration proposedConfiguration;
 
         if (scope == PolicyScope.GLOBAL) {

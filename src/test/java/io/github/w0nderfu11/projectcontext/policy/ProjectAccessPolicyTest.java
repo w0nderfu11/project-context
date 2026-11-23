@@ -136,26 +136,6 @@ class ProjectAccessPolicyTest {
         );
     }
 
-    private static ProjectAccessPolicy getAccessPolicy(ProjectRegistry registry) {
-        PolicyRules global = new PolicyRules(
-                List.of(),
-                List.of(),
-                List.of("Config/local.json"),
-                List.of()
-        );
-        PolicyRules project = new PolicyRules(
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of("private/")
-        );
-        PolicyConfiguration configuration = new PolicyConfiguration(
-                global,
-                Map.of("first", project)
-        );
-        return new ProjectAccessPolicy(registry, configuration);
-    }
-
     @Test
     void shouldDistinguishFilesAndDirectoriesWithIdenticalRuleNames()
             throws IOException {
@@ -221,26 +201,6 @@ class ProjectAccessPolicyTest {
                 createFile(root, "other/debug.log"),
                 "GLOBAL EXTENSION rule: .LOG"
         );
-    }
-
-    private static ProjectAccessPolicy getProjectAccessPolicy(ProjectRegistry registry) {
-        PolicyRules global = new PolicyRules(
-                List.of("Key.log"),
-                List.of(".LOG"),
-                List.of("public/key.log"),
-                List.of("internal", "internal/keys")
-        );
-        PolicyRules project = new PolicyRules(
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of("public")
-        );
-        PolicyConfiguration configuration = new PolicyConfiguration(
-                global,
-                Map.of("first", project)
-        );
-        return new ProjectAccessPolicy(registry, configuration);
     }
 
     @Test
@@ -537,6 +497,46 @@ class ProjectAccessPolicyTest {
             PolicyRules rules
     ) {
         PolicyConfiguration configuration = new PolicyConfiguration(rules, Map.of());
+        return new ProjectAccessPolicy(registry, configuration);
+    }
+
+    private static ProjectAccessPolicy getAccessPolicy(ProjectRegistry registry) {
+        PolicyRules global = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of("Config/local.json"),
+                List.of()
+        );
+        PolicyRules project = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("private/")
+        );
+        PolicyConfiguration configuration = new PolicyConfiguration(
+                global,
+                Map.of("first", project)
+        );
+        return new ProjectAccessPolicy(registry, configuration);
+    }
+
+    private static ProjectAccessPolicy getProjectAccessPolicy(ProjectRegistry registry) {
+        PolicyRules global = new PolicyRules(
+                List.of("Key.log"),
+                List.of(".LOG"),
+                List.of("public/key.log"),
+                List.of("internal", "internal/keys")
+        );
+        PolicyRules project = new PolicyRules(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("public")
+        );
+        PolicyConfiguration configuration = new PolicyConfiguration(
+                global,
+                Map.of("first", project)
+        );
         return new ProjectAccessPolicy(registry, configuration);
     }
 }
