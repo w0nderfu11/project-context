@@ -79,11 +79,11 @@ class BatchReadToolTest {
     @Test
     void shouldReadMultipleFilesInOrder() throws IOException {
         Path first = Files.writeString(
-                tempDir.resolve("First.java"),
+                tempDir.toRealPath().resolve("First.java"),
                 "first content"
         );
         Path second = Files.writeString(
-                tempDir.resolve("Second.java"),
+                tempDir.toRealPath().resolve("Second.java"),
                 "second content"
         );
 
@@ -119,9 +119,9 @@ class BatchReadToolTest {
 
     @Test
     void shouldContinueAfterMissingFile() throws IOException {
-        Path missing = tempDir.resolve("Missing.java");
+        Path missing = tempDir.toRealPath().resolve("Missing.java");
         Path valid = Files.writeString(
-                tempDir.resolve("Valid.java"),
+                tempDir.toRealPath().resolve("Valid.java"),
                 "valid content"
         );
 
@@ -145,12 +145,12 @@ class BatchReadToolTest {
     @Test
     void shouldHandleOversizedFileIndependently() throws IOException {
         Path large = Files.writeString(
-                tempDir.resolve("Large.java"),
+                tempDir.toRealPath().resolve("Large.java"),
                 "x".repeat(256 * 1024 + 1)
         );
 
         Path valid = Files.writeString(
-                tempDir.resolve("Valid.java"),
+                tempDir.toRealPath().resolve("Valid.java"),
                 "ok"
         );
 
@@ -177,7 +177,7 @@ class BatchReadToolTest {
     @Test
     void shouldRejectDuplicatePaths() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         McpSchema.CallToolResult result = call(
@@ -197,7 +197,7 @@ class BatchReadToolTest {
 
         for (int i = 0; i < 11; i++) {
             paths.add(
-                    tempDir.resolve("File" + i + ".java").toString()
+                    tempDir.toRealPath().resolve("File" + i + ".java").toString()
             );
         }
 
@@ -216,7 +216,7 @@ class BatchReadToolTest {
                 Map.of(
                         "projectName", " ",
                         "filePaths", List.of(
-                                tempDir.resolve("Example.java").toString()
+                                tempDir.toRealPath().resolve("Example.java").toString()
                         )
                 )
         );
@@ -230,7 +230,7 @@ class BatchReadToolTest {
     @Test
     void shouldHideInternalErrorsForUnknownProject() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         McpSchema.CallToolResult result = call(

@@ -120,7 +120,7 @@ class SearchToolTest {
     @Test
     void shouldReturnMatchingPaths() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("ProjectContextApplication.java")
+                tempDir.toRealPath().resolve("ProjectContextApplication.java")
         );
 
         SearchTool searchTool = tool();
@@ -147,11 +147,11 @@ class SearchToolTest {
     @Test
     void shouldLimitSearchToOptionalDirectory() throws IOException {
         Path mainDirectory = Files.createDirectories(
-                tempDir.resolve("src/main")
+                tempDir.toRealPath().resolve("src/main")
         );
 
         Path testDirectory = Files.createDirectories(
-                tempDir.resolve("src/test")
+                tempDir.toRealPath().resolve("src/test")
         );
 
         Path mainFile = Files.createFile(

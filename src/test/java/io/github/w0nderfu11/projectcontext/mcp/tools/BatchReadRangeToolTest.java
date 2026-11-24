@@ -79,7 +79,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldReadMultipleRangesOfSameFile() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird\nfourth"
         );
 
@@ -123,7 +123,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldHandleInvalidRangeIndependently() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird"
         );
 
@@ -155,9 +155,9 @@ class BatchReadRangeToolTest {
 
     @Test
     void shouldHandleMissingFileIndependently() throws IOException {
-        Path missing = tempDir.resolve("Missing.java");
+        Path missing = tempDir.toRealPath().resolve("Missing.java");
         Path valid = Files.writeString(
-                tempDir.resolve("Valid.java"),
+                tempDir.toRealPath().resolve("Valid.java"),
                 "hello"
         );
 
@@ -184,7 +184,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldAcceptLongLineArguments() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird"
         );
 
@@ -207,7 +207,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldRejectInvalidIntegerArgument() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         McpSchema.CallToolResult result = call(
@@ -226,7 +226,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldRejectDuplicateRanges() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         Map<String, Object> request = range(file, 1, 2);
@@ -245,7 +245,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldRejectMoreThanTenRanges() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         List<Map<String, Object>> ranges = new ArrayList<>();
@@ -265,7 +265,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldEnforceLineLimitIndependently() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond"
         );
 
@@ -295,7 +295,7 @@ class BatchReadRangeToolTest {
     @Test
     void shouldHideInternalErrorsForUnknownProject() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         McpSchema.CallToolResult result = call(

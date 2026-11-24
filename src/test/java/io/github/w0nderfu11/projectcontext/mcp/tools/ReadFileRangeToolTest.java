@@ -152,7 +152,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnRequestedLineRange() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird\nfourth"
         );
 
@@ -182,7 +182,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnSingleLine() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird"
         );
 
@@ -208,7 +208,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnAvailableLinesBeyondEndOfFile() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird"
         );
 
@@ -234,7 +234,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnEmptyContentBeyondFileLength() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond"
         );
 
@@ -260,7 +260,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldAcceptLongLineArguments() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "first\nsecond\nthird"
         );
 
@@ -286,7 +286,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForBlankProjectName() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -330,7 +330,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForMissingStartLine() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -353,7 +353,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForInvalidStartLineType() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -377,7 +377,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForInvalidEndLineType() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -401,7 +401,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldRejectIntegerOutsideSupportedRange() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -425,7 +425,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForInvalidLineRange() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -449,7 +449,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForExceedingLineLimit() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -473,7 +473,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnErrorForExceedingResultSize() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("large.txt"),
+                tempDir.toRealPath().resolve("large.txt"),
                 "a".repeat(256 * 1024 + 1)
         );
 
@@ -498,7 +498,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldHidePathForUnregisteredProject() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileRangeTool readFileRangeTool = tool();
@@ -522,11 +522,11 @@ class ReadFileRangeToolTest {
     @Test
     void shouldHidePathOutsideProjectRoot() throws IOException {
         Path project = Files.createDirectory(
-                tempDir.resolve("project")
+                tempDir.toRealPath().resolve("project")
         );
 
         Path outsideFile = Files.createFile(
-                tempDir.resolve("secret.txt")
+                tempDir.toRealPath().resolve("secret.txt")
         );
 
         ProjectRegistry registry = new ProjectRegistry(
@@ -561,7 +561,7 @@ class ReadFileRangeToolTest {
 
     @Test
     void shouldHidePathForMissingFile() throws IOException {
-        Path missingFile = tempDir.resolve("missing.txt");
+        Path missingFile = tempDir.toRealPath().resolve("missing.txt");
 
         ReadFileRangeTool readFileRangeTool = tool();
 
@@ -584,7 +584,7 @@ class ReadFileRangeToolTest {
     @Test
     void shouldReturnProjectFilePathAccessDeniedMessage() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("blocked.java"),
+                tempDir.toRealPath().resolve("blocked.java"),
                 "excluded content"
         );
 

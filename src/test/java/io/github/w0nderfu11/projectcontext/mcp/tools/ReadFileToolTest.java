@@ -111,7 +111,7 @@ class ReadFileToolTest {
     @Test
     void shouldReturnFileContent() throws IOException {
         Path file = Files.writeString(
-                tempDir.resolve("Example.java"),
+                tempDir.toRealPath().resolve("Example.java"),
                 "public class Example {}"
         );
 
@@ -161,7 +161,7 @@ class ReadFileToolTest {
     @Test
     void shouldReturnErrorForUnregisteredProject() throws IOException {
         Path file = Files.createFile(
-                tempDir.resolve("Example.java")
+                tempDir.toRealPath().resolve("Example.java")
         );
 
         ReadFileTool readFileTool = tool();

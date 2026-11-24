@@ -1,0 +1,46 @@
+name: Java CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verify with Maven (Linux and macOS)
+        if: runner.os != 'Windows'
+        run: sh ./mvnw -B clean verify
+
+      - name: Verify with Maven (Windows)
+        if: runner.os == 'Windows'
+        run: .\mvnw.cmd -B clean verify
+
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-${{ matrix.os }}
+          path: target/surefire-reports/

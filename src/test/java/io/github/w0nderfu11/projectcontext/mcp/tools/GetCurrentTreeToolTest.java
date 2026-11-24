@@ -105,7 +105,7 @@ class GetCurrentTreeToolTest {
     @SuppressWarnings("unchecked")
     void shouldReturnDirectoryEntries() throws IOException {
         Path directory = Files.createDirectory(
-                tempDir.resolve("src")
+                tempDir.toRealPath().resolve("src")
         );
 
         Path nestedDirectory = Files.createDirectory(
@@ -174,7 +174,7 @@ class GetCurrentTreeToolTest {
                 getCurrentTreeTool,
                 Map.of(
                         "projectName", "unknown",
-                        "directoryPath", tempDir.toString()
+                        "directoryPath", tempDir.toRealPath().toString()
                 )
         );
 
