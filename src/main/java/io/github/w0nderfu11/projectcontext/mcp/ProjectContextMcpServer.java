@@ -5,6 +5,7 @@ import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetAccessPolicyTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.GetFileMetadataTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileRangeTool;
@@ -35,7 +36,8 @@ public final class ProjectContextMcpServer implements AutoCloseable {
             BatchReadRangeTool batchReadRangeTool,
             GetCurrentTreeTool getCurrentTreeTool,
             SearchTool searchTool,
-            GetAccessPolicyTool getAccessPolicyTool
+            GetAccessPolicyTool getAccessPolicyTool,
+            GetFileMetadataTool getFileMetadataTool
     ) {
         Objects.requireNonNull(transport, "transport must not be null");
         Objects.requireNonNull(pingTool, "pingTool must not be null");
@@ -72,6 +74,11 @@ public final class ProjectContextMcpServer implements AutoCloseable {
                 "getAccessPolicyTool must not be null"
         );
 
+        Objects.requireNonNull(
+                getFileMetadataTool,
+                "getFileMetadataTool must not be null"
+        );
+
         this.server = McpServer.sync(transport.transport())
                 .serverInfo(SERVER_NAME, projectVersion())
                 .tools(
@@ -83,7 +90,8 @@ public final class ProjectContextMcpServer implements AutoCloseable {
                         batchReadRangeTool.specification(),
                         getCurrentTreeTool.specification(),
                         searchTool.specification(),
-                        getAccessPolicyTool.specification()
+                        getAccessPolicyTool.specification(),
+                        getFileMetadataTool.specification()
                 )
                 .build();
     }
