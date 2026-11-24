@@ -3,6 +3,7 @@ package io.github.w0nderfu11.projectcontext.mcp;
 
 import io.github.w0nderfu11.projectcontext.application.*;
 import io.github.w0nderfu11.projectcontext.mcp.tools.*;
+import io.github.w0nderfu11.projectcontext.policy.ProjectAccessPolicy;
 import io.github.w0nderfu11.projectcontext.policy.config.PolicyConfiguration;
 import io.github.w0nderfu11.projectcontext.policy.config.PolicyRules;
 import io.github.w0nderfu11.projectcontext.registry.ProjectRegistry;
@@ -59,7 +60,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 ).close()
         );
     }
@@ -88,7 +90,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -122,7 +125,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -156,7 +160,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -190,7 +195,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -224,7 +230,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -258,7 +265,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -292,7 +300,8 @@ class ProjectContextMcpServerTest {
                         null,
                         getCurrentTreeTool,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -326,7 +335,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         null,
                         searchTool,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -360,7 +370,8 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool,
                         getCurrentTreeTool,
                         null,
-                        getAccessPolicyTool()
+                        getAccessPolicyTool(),
+                        getFileMetadataTool()
                 )
         );
 
@@ -384,12 +395,38 @@ class ProjectContextMcpServerTest {
                         batchReadRangeTool(),
                         getCurrentTreeTool(),
                         searchTool(),
-                        null
+                        null,
+                        getFileMetadataTool()
                 )
         );
 
         assertEquals(
                 "getAccessPolicyTool must not be null",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldRejectNullGetFileMetadataTool() throws IOException {
+        NullPointerException exception = assertThrows(
+                NullPointerException.class,
+                () -> new ProjectContextMcpServer(
+                        new McpHttpTransport(),
+                        new PingTool(new PingService()),
+                        listProjectsTool(),
+                        readFileTool(),
+                        readFileRangeTool(),
+                        batchReadTool(),
+                        batchReadRangeTool(),
+                        getCurrentTreeTool(),
+                        searchTool(),
+                        getAccessPolicyTool(),
+                        null
+                )
+        );
+
+        assertEquals(
+                "getFileMetadataTool must not be null",
                 exception.getMessage()
         );
     }
@@ -417,7 +454,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -476,7 +514,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -551,7 +590,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -637,7 +677,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -729,7 +770,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -835,7 +877,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -936,7 +979,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -1009,7 +1053,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool(),
                              getCurrentTreeTool(),
                              searchTool(),
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -1049,11 +1094,119 @@ class ProjectContextMcpServerTest {
 
                     assertEquals(200, response.statusCode());
                     assertTrue(response.body().contains("\"get_access_policy\""));
+                    assertTrue(response.body().contains("\"get_file_metadata\""));
                     assertTrue(
                             response.body().contains("\"read_files\"")
                     );
                     assertTrue(
                             response.body().contains("\"read_file_ranges\"")
+                    );
+                }
+            } finally {
+                httpServer.stop();
+            }
+        }
+    }
+
+    @Test
+    void shouldGetFileMetadataAndRejectExcludedFileOverHttp() throws Exception {
+        Path root = tempDir.toRealPath();
+        Path file = Files.writeString(
+                root.resolve("example.txt"),
+                "test"
+        );
+        Path excluded = Files.createFile(root.resolve("secret.txt"));
+
+        McpHttpTransport transport = new McpHttpTransport();
+
+        try (ProjectContextMcpServer ignored =
+                     new ProjectContextMcpServer(
+                             transport,
+                             new PingTool(new PingService()),
+                             listProjectsTool(),
+                             readFileTool(),
+                             readFileRangeTool(),
+                             batchReadTool(),
+                             batchReadRangeTool(),
+                             getCurrentTreeTool(),
+                             searchTool(),
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
+                     )) {
+
+            JettyServer httpServer = new JettyServer(
+                    "127.0.0.1",
+                    0,
+                    transport.handler()
+            );
+
+            try {
+                httpServer.start();
+
+                URI endpoint = endpoint(httpServer);
+
+                try (HttpClient client = HttpClient.newHttpClient()) {
+                    String sessionId = initializeSession(
+                            client,
+                            endpoint
+                    );
+
+                    String requestBody = """
+                            {
+                              "jsonrpc": "2.0",
+                              "id": %d,
+                              "method": "tools/call",
+                              "params": {
+                                "name": "get_file_metadata",
+                                "arguments": {"projectName": "project", "filePath": "%s"}
+                              }
+                            }
+                            """;
+
+                    HttpResponse<String> response = client.send(
+                            toolRequest(
+                                    endpoint,
+                                    sessionId,
+                                    requestBody.formatted(21, jsonPath(file))
+                            ),
+                            HttpResponse.BodyHandlers.ofString()
+                    );
+
+                    assertEquals(200, response.statusCode());
+                    assertTrue(
+                            response.body().contains("\"isError\":false")
+                    );
+                    assertTrue(
+                            response.body().contains("\"filePath\":\"" + jsonPath(file) + "\"")
+                    );
+                    assertTrue(
+                            response.body().contains("\"sizeBytes\":4")
+                    );
+                    assertTrue(response.body().contains(
+                            "\"lastModified\":\"" + Files.getLastModifiedTime(file).toInstant() + "\""
+                    ));
+
+                    HttpResponse<String> denied = client.send(
+                            toolRequest(
+                                    endpoint,
+                                    sessionId,
+                                    requestBody.formatted(22, jsonPath(excluded))
+                            ),
+                            HttpResponse.BodyHandlers.ofString()
+                    );
+
+                    assertEquals(200, denied.statusCode());
+                    assertFalse(
+                            denied.body().contains("\"structuredContent\"")
+                    );
+                    assertTrue(
+                            denied.body().contains("\"isError\":true")
+                    );
+                    assertTrue(
+                            denied.body().contains("Access denied by PROJECT FILE_NAME rule: secret.txt")
+                    );
+                    assertFalse(
+                            denied.body().contains("\"sizeBytes\"")
                     );
                 }
             } finally {
@@ -1077,7 +1230,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool(),
                              getCurrentTreeTool(),
                              searchTool(),
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -1156,7 +1310,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool(),
                              getCurrentTreeTool(),
                              searchTool(),
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -1240,7 +1395,8 @@ class ProjectContextMcpServerTest {
                              batchReadRangeTool(),
                              getCurrentTreeTool(),
                              searchTool(),
-                             getAccessPolicyTool()
+                             getAccessPolicyTool(),
+                             getFileMetadataTool()
                      )) {
 
             JettyServer httpServer = new JettyServer(
@@ -1315,7 +1471,27 @@ class ProjectContextMcpServerTest {
         }
     }
 
+    private GetFileMetadataTool getFileMetadataTool() throws IOException {
+        ProjectRegistry registry = new ProjectRegistry(
+                Map.of("project", tempDir.toRealPath())
+        );
+        ProjectAccessPolicy accessPolicy = new ProjectAccessPolicy(
+                registry,
+                policyConfiguration()
+        );
+        GetFileMetadataService service = new GetFileMetadataService(
+                registry,
+                accessPolicy
+        );
+
+        return new GetFileMetadataTool(service);
+    }
+
     private GetAccessPolicyTool getAccessPolicyTool() {
+        return new GetAccessPolicyTool(policyConfiguration());
+    }
+
+    private PolicyConfiguration policyConfiguration() {
         PolicyRules global = new PolicyRules(
                 List.of(),
                 List.of(".log"),
@@ -1329,11 +1505,9 @@ class ProjectContextMcpServerTest {
                 List.of()
         );
 
-        return new GetAccessPolicyTool(
-                new PolicyConfiguration(
-                        global,
-                        Map.of("project", project)
-                )
+        return new PolicyConfiguration(
+                global,
+                Map.of("project", project)
         );
     }
 

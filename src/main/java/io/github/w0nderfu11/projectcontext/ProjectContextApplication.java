@@ -3,6 +3,7 @@ package io.github.w0nderfu11.projectcontext;
 
 import io.github.w0nderfu11.projectcontext.application.BatchReadService;
 import io.github.w0nderfu11.projectcontext.application.GetCurrentTreeService;
+import io.github.w0nderfu11.projectcontext.application.GetFileMetadataService;
 import io.github.w0nderfu11.projectcontext.application.ListProjectsService;
 import io.github.w0nderfu11.projectcontext.application.PingService;
 import io.github.w0nderfu11.projectcontext.application.ReadFileService;
@@ -13,6 +14,7 @@ import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadRangeTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.BatchReadTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetAccessPolicyTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.GetCurrentTreeTool;
+import io.github.w0nderfu11.projectcontext.mcp.tools.GetFileMetadataTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ListProjectsTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.PingTool;
 import io.github.w0nderfu11.projectcontext.mcp.tools.ReadFileRangeTool;
@@ -66,6 +68,12 @@ public final class ProjectContextApplication {
                         accessPolicy
                 );
 
+        GetFileMetadataService getFileMetadataService =
+                new GetFileMetadataService(
+                        projectRegistry,
+                        accessPolicy
+                );
+
         SearchService searchService =
                 new SearchService(
                         projectRegistry,
@@ -92,6 +100,9 @@ public final class ProjectContextApplication {
         GetCurrentTreeTool getCurrentTreeTool =
                 new GetCurrentTreeTool(getCurrentTreeService);
 
+        GetFileMetadataTool getFileMetadataTool =
+                new GetFileMetadataTool(getFileMetadataService);
+
         SearchTool searchTool =
                 new SearchTool(searchService);
 
@@ -111,7 +122,8 @@ public final class ProjectContextApplication {
                              batchReadRangeTool,
                              getCurrentTreeTool,
                              searchTool,
-                             getAccessPolicyTool
+                             getAccessPolicyTool,
+                             getFileMetadataTool
                      )) {
 
             JettyServer server = new JettyServer(
